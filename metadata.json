@@ -1,0 +1,6 @@
+{
+  "name": "RespiraCRM Colombia",
+  "description": "Plataforma integral CRM para la gestión de dispositivos médicos respiratorios y salud en Colombia, con módulos de ventas, prospectos, mantenimiento técnico y analítica.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

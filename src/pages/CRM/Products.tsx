@@ -12,18 +12,39 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  TrendingUp
+  TrendingUp,
+  X,
+  Loader2,
+  DollarSign,
+  Info
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Product } from "../../types";
 import { api } from "../../lib/api";
-import { formatCurrency } from "../../lib/utils";
+import { formatCurrency, cn } from "../../lib/utils";
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  
+  // Modal state
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formData, setFormData] = useState<Partial<Product>>({
+    sku: "",
+    name: "",
+    category: "",
+    brand: "",
+    price: 0,
+    stock: 0,
+    tax_rate: 19,
+    description: "",
+    provider: "",
+    warranty: "1 año",
+    image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
+  });
 
   useEffect(() => {
     fetchProducts();
@@ -46,6 +67,34 @@ export default function Products() {
     }
   };
 
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      await api.post("/products", formData);
+      await fetchProducts();
+      setIsModalOpen(false);
+      setFormData({
+        sku: "",
+        name: "",
+        category: "",
+        brand: "",
+        price: 0,
+        stock: 0,
+        tax_rate: 19,
+        description: "",
+        provider: "",
+        warranty: "1 año",
+        image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
+      });
+    } catch (err) {
+      console.error(err);
+      alert("Error al guardar el producto");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const filtered = products.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) || 
     p.sku.toLowerCase().includes(search.toLowerCase()) ||
@@ -60,11 +109,16 @@ export default function Products() {
           <p className="text-slate-500 text-sm">Gestiona el inventario de equipos médicos y consumibles.</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm">
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm active:scale-95"
+          >
             <Plus size={18} /> Nuevo Producto
           </button>
         </div>
       </div>
+
+      {/* Stats, Filters, etc. */}
 
       {/* Filters Bar */}
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row gap-4 items-center">
@@ -216,6 +270,209 @@ export default function Products() {
           <button className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-400 transition-colors disabled:opacity-30" disabled><ChevronRight size={20} /></button>
         </div>
       </div>
+
+      {/* Add Product Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl bg-white rounded-[32px] shadow-2xl border border-slate-200 overflow-hidden"
+            >
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
+                    <Package size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-slate-800">Registrar Nuevo Producto</h2>
+                    <p className="text-sm text-slate-500">Ingresa los detalles técnicos y comerciales del equipo.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-400"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSave} className="p-8 max-h-[70vh] overflow-y-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                       <label className="text-sm font-bold text-slate-700 ml-1">Nombre del Producto</label>
+                       <input 
+                         type="text" 
+                         required
+                         value={formData.name}
+                         onChange={(e) => setFormData({...formData, name: e.target.value})}
+                         placeholder="Ej: Concentrador de Oxígeno 5L"
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                       />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">SKU / Referencia</label>
+                         <input 
+                           type="text" 
+                           required
+                           value={formData.sku}
+                           onChange={(e) => setFormData({...formData, sku: e.target.value})}
+                           placeholder="OX-500"
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">Marca</label>
+                         <input 
+                           type="text" 
+                           required
+                           value={formData.brand}
+                           onChange={(e) => setFormData({...formData, brand: e.target.value})}
+                           placeholder="Drive Medical"
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                         />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                       <label className="text-sm font-bold text-slate-700 ml-1">Categoría</label>
+                       <select 
+                         required
+                         value={formData.category}
+                         onChange={(e) => setFormData({...formData, category: e.target.value})}
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden appearance-none"
+                       >
+                         <option value="">Selecciona una categoría</option>
+                         <option value="Oxigenoterapia">Oxigenoterapia</option>
+                         <option value="Apnea">Apnea</option>
+                         <option value="Nebulización">Nebulización</option>
+                         <option value="Insumos">Insumos</option>
+                       </select>
+                    </div>
+
+                    <div className="space-y-2">
+                       <label className="text-sm font-bold text-slate-700 ml-1">Descripción</label>
+                       <textarea 
+                         rows={4}
+                         value={formData.description}
+                         onChange={(e) => setFormData({...formData, description: e.target.value})}
+                         placeholder="Detalles adicionales del equipo..."
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                       />
+                    </div>
+                  </div>
+
+                  {/* Right Column */}
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">Precio Unitario (COP)</label>
+                         <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input 
+                              type="number" 
+                              required
+                              value={formData.price}
+                              onChange={(e) => setFormData({...formData, price: Number(e.target.value)})}
+                              className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                            />
+                         </div>
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">Impuesto (%)</label>
+                         <input 
+                           type="number" 
+                           value={formData.tax_rate}
+                           onChange={(e) => setFormData({...formData, tax_rate: Number(e.target.value)})}
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                         />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">Stock Inicial</label>
+                         <input 
+                           type="number" 
+                           required
+                           value={formData.stock}
+                           onChange={(e) => setFormData({...formData, stock: Number(e.target.value)})}
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                         />
+                      </div>
+                      <div className="space-y-2">
+                         <label className="text-sm font-bold text-slate-700 ml-1">Garantía</label>
+                         <input 
+                           type="text" 
+                           value={formData.warranty}
+                           onChange={(e) => setFormData({...formData, warranty: e.target.value})}
+                           placeholder="Ej: 1 año"
+                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                         />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                       <label className="text-sm font-bold text-slate-700 ml-1">Proveedor / Fabricante</label>
+                       <input 
+                         type="text" 
+                         value={formData.provider}
+                         onChange={(e) => setFormData({...formData, provider: e.target.value})}
+                         placeholder="Drive Medical Colombia"
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden"
+                       />
+                    </div>
+
+                    <div className="space-y-2">
+                       <label className="text-sm font-bold text-slate-700 ml-1">URL de Imagen</label>
+                       <input 
+                         type="url" 
+                         value={formData.image_url}
+                         onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden text-xs text-blue-600"
+                       />
+                       <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
+                         <Info size={14} />
+                         Puedes usar una URL de Unsplash para pruebas visuales.
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-12 flex items-center justify-end gap-4 p-6 bg-slate-50 -mx-8 -mb-8">
+                  <button 
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-6 py-3 text-slate-500 font-bold text-sm hover:text-slate-700"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={isSaving}
+                    className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-100 disabled:opacity-50 transition-all active:scale-95"
+                  >
+                    {isSaving ? <Loader2 className="animate-spin" /> : "Guardar Producto"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

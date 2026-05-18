@@ -91,7 +91,7 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   const { email } = req.body;
   try {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.APP_URL}/reset-password`,
+      redirectTo: `${process.env.APP_URL || "http://localhost:3000"}/reset-password`,
     });
     // Siempre responder éxito (no revelar si el correo existe)
     res.json({ message: "Si el correo está registrado, recibirás un enlace." });
@@ -102,6 +102,139 @@ app.post("/api/auth/forgot-password", async (req, res) => {
 
 app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   res.json(req.user);
+});
+
+// --- OAUTH ROUTES ---
+app.get("/api/auth/oauth-url", async (req, res) => {
+  const { provider } = req.query;
+  const redirectUri = `${process.env.APP_URL || "http://localhost:3000"}/auth/callback`;
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider as any,
+    options: {
+      redirectTo: redirectUri,
+      skipBrowserRedirect: true
+    }
+  });
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ url: data.url });
+});
+
+app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
+  const { code } = req.query;
+  
+  // Script to send message back to opener
+  const sendMessage = (data: any) => `
+    <html>
+      <body>
+        <script>
+          if (window.opener) {
+            window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: ${JSON.stringify(data)} }, "*");
+            window.close();
+          } else {
+            window.location.href = "/";
+          }
+        </script>
+        <p>Autenticando... Esta ventana se cerrará automáticamente.</p>
+      </body>
+    </html>
+  `;
+
+  if (code) {
+    try {
+      // Create a fresh client for the server exchange that uses the anon key or service role
+      // But we need to use the same logic as the initial request
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code as string);
+      if (error) throw error;
+
+      const { user } = data;
+      if (user) {
+        // Find or create in custom users table
+        let { data: dbUser, error: dbError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("email", user.email)
+          .single();
+
+        if (!dbUser && (!dbError || dbError.code === "PGRST116")) {
+          const { data: newUser, error: createError } = await supabase
+            .from("users")
+            .insert([{ 
+              email: user.email, 
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0], 
+              role: "sales",
+              password_hash: "OAUTH_USER"
+            }])
+            .select()
+            .single();
+          if (createError) throw createError;
+          dbUser = newUser;
+        } else if (dbError && dbError.code !== "PGRST116") {
+          throw dbError;
+        }
+
+        const token = jwt.sign(
+          { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name },
+          JWT_SECRET,
+          { expiresIn: "10h" }
+        );
+
+        return res.send(sendMessage({ token, user: { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name } }));
+      }
+    } catch (err: any) {
+      console.error("OAuth Exchange Error:", err);
+      return res.send(sendMessage({ error: err.message }));
+    }
+  }
+
+  res.send(sendMessage({ error: "No code provided" }));
+});
+
+// Exchange OAuth code/tokens for a custom JWT
+app.post("/api/auth/oauth-exchange", async (req, res) => {
+  const { email, full_name, role } = req.body;
+  if (!email) return res.status(400).json({ error: "Email required" });
+
+  try {
+    // Check if user exists in custom users table
+    let { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
+
+    if (error && error.code !== "PGRST116") { // Other error than 'not found'
+      return res.status(400).json({ error: error.message });
+    }
+
+    if (!user) {
+      // Create new user if they don't exist
+      const { data: newUser, error: createError } = await supabase
+        .from("users")
+        .insert([{ 
+          email, 
+          full_name: full_name || email.split('@')[0], 
+          role: role || "sales", // Default role
+          password_hash: "OAUTH_USER" // Placeholder
+        }])
+        .select()
+        .single();
+      
+      if (createError) return res.status(400).json({ error: createError.message });
+      user = newUser;
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.full_name },
+      JWT_SECRET,
+      { expiresIn: "10h" }
+    );
+
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.full_name } });
+  } catch (err) {
+    res.status(500).json({ error: "Server error during exchange" });
+  }
 });
 
 // --- CRM ROUTES (Generic CRUD) ---

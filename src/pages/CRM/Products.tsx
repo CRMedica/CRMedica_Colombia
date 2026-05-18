@@ -551,30 +551,17 @@ export default function Products() {
                            </div>
                            <input 
                              type="file" 
-                             accept="image/*"
+                             accept=".png,.jpg,.jpeg,.webp"
                              onChange={handleFileChange}
                              className="absolute inset-0 opacity-0 cursor-pointer"
                            />
                          </div>
                          <div className="flex-1">
-                           <p className="text-xs text-slate-500 mb-2">Haz clic en el recuadro para subir una imagen (PNG, JPG, WEBP). Máximo 5MB.</p>
+                           <p className="text-xs text-slate-500 mb-2">Haz clic en el recuadro para subir una imagen (PNG, JPG, JPEG o WEBP). Máximo 5MB.</p>
                            <div className="space-y-3">
-                             <div className="relative">
-                               <input 
-                                 type="url" 
-                                 value={formData.image_url}
-                                 onChange={(e) => {
-                                   setFormData({...formData, image_url: e.target.value});
-                                   setPreviewUrl(e.target.value);
-                                 }}
-                                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition-all outline-hidden text-[10px] text-blue-600"
-                                 placeholder="O pega una URL de imagen..."
-                               />
-                               <Info size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" />
-                             </div>
                              <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
                                <TrendingUp size={14} />
-                               Las imágenes locales se guardarán en el servidor.
+                               Las imágenes se guardarán de forma segura en el servidor.
                              </div>
                            </div>
                          </div>

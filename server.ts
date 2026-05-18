@@ -139,7 +139,7 @@ app.get("/api/auth/oauth-url", async (req, res) => {
   // Use explicit env var or detect from host header
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.headers['x-forwarded-host'] || req.get('host');
-  const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+  const baseUrl = (process.env.APP_URL || `${protocol}://${host}`).replace(/\/$/, "");
   const redirectUri = `${baseUrl}/auth/callback`;
   
   console.log("OAuth Redirect URI:", redirectUri);
@@ -162,16 +162,45 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
   // Script to send message back to opener
   const sendMessage = (data: any) => `
     <html>
+      <head>
+        <title>Autenticando...</title>
+        <style>
+          body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; text-align: center; }
+          .loader { border: 3px solid #f3f3f3; border-top: 3px solid #2563eb; border-radius: 50%; width: 24px; height: 24px; animate: spin 1s linear infinite; margin-bottom: 16px; }
+          @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        </style>
+      </head>
       <body>
+        <div class="loader"></div>
+        <p>Autenticación completada con éxito.</p>
+        <p style="font-size: 14px; color: #64748b;">Esta ventana se cerrará automáticamente en un momento.</p>
         <script>
-          if (window.opener) {
-            window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: ${JSON.stringify(data)} }, "*");
-            window.close();
-          } else {
-            window.location.href = "/";
+          const authData = ${JSON.stringify(data)};
+          
+          // 1. Try BroadcastChannel (Modern, avoids window.opener issues)
+          try {
+            const bc = new BroadcastChannel('oauth_channel');
+            bc.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: authData });
+            setTimeout(() => window.close(), 1000);
+          } catch (e) {
+            console.error("BroadcastChannel error:", e);
           }
+
+          // 2. Try window.opener.postMessage (Classic)
+          if (window.opener) {
+            try {
+              window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: authData }, "*");
+              setTimeout(() => window.close(), 1000);
+            } catch (e) {
+              console.error("postMessage error:", e);
+            }
+          }
+
+          // fallback: if after 3 seconds still open, show manual close button
+          setTimeout(() => {
+            document.body.innerHTML = '<h1>¡Listo!</h1><p>Ya puedes cerrar esta ventana y regresar a la aplicación.</p><button onclick="window.close()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">Cerrar ventana</button>';
+          }, 3000);
         </script>
-        <p>Autenticando... Esta ventana se cerrará automáticamente.</p>
       </body>
     </html>
   `;
@@ -362,30 +391,19 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   
   try {
     const result = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       contents: [{ role: "user", parts: [{ text: message }] }],
-      generationConfig: {
+      config: {
         maxOutputTokens: 500,
         temperature: 0.7,
+        systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
+          Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
+          Contexto actual del usuario: ${JSON.stringify(context)}.
+          Responde de forma profesional, amable y en español. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
       },
-      systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
-        Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
-        Contexto actual del usuario: ${JSON.stringify(context)}.
-        Responde de forma profesional, amable y en español. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
     });
 
-    // Handle different response formats based on SDK version
-    let botResponse = "";
-    if (typeof result.response?.text === 'function') {
-      botResponse = result.response.text();
-    } else if (typeof result.response?.text === 'string') {
-      botResponse = result.response.text;
-    } else if (result.text) {
-      botResponse = result.text;
-    } else {
-      botResponse = "No pude generar una respuesta clara.";
-    }
-
+    const botResponse = result.text || "No pude generar una respuesta clara.";
     res.json({ response: botResponse });
   } catch (err: any) {
     console.error("AI Chat Error Details:", err);

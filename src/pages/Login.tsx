@@ -121,11 +121,9 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.endsWith(".run.app") && !event.origin.includes("localhost")) return;
-
-      if (event.data?.type === "OAUTH_AUTH_SUCCESS") {
-        const { payload } = event.data;
+    const handleLoginSuccess = (data: any) => {
+      if (data.type === "OAUTH_AUTH_SUCCESS") {
+        const { payload } = data;
         if (payload.error) {
           setError(payload.error);
           setLoading(false);
@@ -136,8 +134,22 @@ export default function Login({ onLogin }: LoginProps) {
       }
     };
 
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.origin.endsWith(".run.app") && !event.origin.includes("localhost")) return;
+      handleLoginSuccess(event.data);
+    };
+
+    // Listen for cross-window messages via BroadcastChannel
+    const bc = new BroadcastChannel('oauth_channel');
+    bc.onmessage = (event) => {
+      handleLoginSuccess(event.data);
+    };
+
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      bc.close();
+    };
   }, [navigate, onLogin]);
 
   const titles: Record<Mode, { title: string; subtitle: string }> = {

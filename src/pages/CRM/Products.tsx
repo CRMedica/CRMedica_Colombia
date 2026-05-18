@@ -32,6 +32,7 @@ export default function Products() {
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({
     sku: "",
     name: "",
@@ -56,37 +57,50 @@ export default function Products() {
       setProducts(data);
     } catch (err) {
       console.error(err);
-      // Mock data if failed because table might not exist yet
+      // Mock data updated with better placeholders
       setProducts([
         { id: '1', sku: 'OX-500', name: 'Concentrador de Oxígeno 5L', category: 'Oxigenoterapia', brand: 'Drive', price: 4500000, stock: 12, description: 'Equipo estacionario de alta pureza.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Drive Medical', warranty: '1 año', tax_rate: 19 },
-        { id: '2', sku: 'CP-100', name: 'Equipo CPAP Automático', category: 'Apnea', brand: 'ResMed', price: 2800000, stock: 8, description: 'Ajuste de presión automático silencioso.', image_url: 'https://images.unsplash.com/photo-1583088580009-2d977c6ca09a?auto=format&fit=crop&q=80&w=400', provider: 'ResMed LATAM', warranty: '2 años', tax_rate: 19 },
-        { id: '3', sku: 'NB-20', name: 'Nebulizador Portátil Mesh', category: 'Nebulización', brand: 'Omron', price: 450000, stock: 25, description: 'Tecnología de malla vibratoria.', image_url: 'https://images.unsplash.com/photo-1584036561566-baf8f5f1b144?auto=format&fit=crop&q=80&w=400', provider: 'Omron Salud', warranty: '1 año', tax_rate: 19 },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleEdit = (product: Product) => {
+    setEditingId(product.id);
+    setFormData(product);
+    setIsModalOpen(true);
+  };
+
+  const handleAddNew = () => {
+    setEditingId(null);
+    setFormData({
+      sku: "",
+      name: "",
+      category: "",
+      brand: "",
+      price: 0,
+      stock: 0,
+      tax_rate: 19,
+      description: "",
+      provider: "",
+      warranty: "1 año",
+      image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
+    });
+    setIsModalOpen(true);
+  };
+
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await api.post("/products", formData);
+      if (editingId) {
+        await api.put(`/products/${editingId}`, formData);
+      } else {
+        await api.post("/products", formData);
+      }
       await fetchProducts();
       setIsModalOpen(false);
-      setFormData({
-        sku: "",
-        name: "",
-        category: "",
-        brand: "",
-        price: 0,
-        stock: 0,
-        tax_rate: 19,
-        description: "",
-        provider: "",
-        warranty: "1 año",
-        image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
-      });
     } catch (err) {
       console.error(err);
       alert("Error al guardar el producto");
@@ -110,7 +124,7 @@ export default function Products() {
         </div>
         <div className="flex items-center gap-2">
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleAddNew}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-sm active:scale-95"
           >
             <Plus size={18} /> Nuevo Producto
@@ -179,12 +193,15 @@ export default function Products() {
                 exit={{ opacity: 0, scale: 0.9 }}
                 className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden group hover:shadow-xl transition-all flex flex-col"
               >
-                <div className="aspect-square bg-slate-50 relative overflow-hidden">
+                <div className="aspect-square bg-slate-100 relative overflow-hidden">
                   <img 
                     src={product.image_url} 
                     alt={product.name} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                    }}
                   />
                   <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-bold text-slate-800 shadow-sm">
                     {product.sku}
@@ -195,7 +212,12 @@ export default function Products() {
                     </div>
                   )}
                   <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                     <button className="p-3 bg-white text-slate-800 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-lg"><Edit size={18} /></button>
+                     <button 
+                       onClick={() => handleEdit(product)}
+                       className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+                     >
+                       <Edit size={18} />
+                     </button>
                      <button className="p-3 bg-white text-slate-800 rounded-full hover:bg-slate-200 transition-all shadow-lg"><Maximize2 size={18} /></button>
                   </div>
                 </div>
@@ -248,7 +270,12 @@ export default function Products() {
                    <td className="px-6 py-4 text-right font-bold text-slate-800 text-sm">{formatCurrency(product.price)}</td>
                    <td className="px-6 py-4">
                      <div className="flex items-center gap-2">
-                       <button className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"><Edit size={16} /></button>
+                       <button 
+                         onClick={() => handleEdit(product)}
+                         className="p-2 hover:bg-blue-50 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
+                        >
+                          <Edit size={16} />
+                        </button>
                        <button className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors"><Trash2 size={16} /></button>
                      </div>
                    </td>
@@ -294,8 +321,12 @@ export default function Products() {
                     <Package size={24} />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-slate-800">Registrar Nuevo Producto</h2>
-                    <p className="text-sm text-slate-500">Ingresa los detalles técnicos y comerciales del equipo.</p>
+                    <h2 className="text-xl font-bold text-slate-800">
+                      {editingId ? "Editar Producto" : "Registrar Nuevo Producto"}
+                    </h2>
+                    <p className="text-sm text-slate-500">
+                      {editingId ? "Actualiza los detalles técnicos y comerciales del equipo." : "Ingresa los detalles técnicos y comerciales del equipo."}
+                    </p>
                   </div>
                 </div>
                 <button 
@@ -465,7 +496,7 @@ export default function Products() {
                     disabled={isSaving}
                     className="flex items-center gap-2 px-10 py-3 bg-blue-600 text-white rounded-2xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-100 disabled:opacity-50 transition-all active:scale-95"
                   >
-                    {isSaving ? <Loader2 className="animate-spin" /> : "Guardar Producto"}
+                    {isSaving ? <Loader2 className="animate-spin" /> : (editingId ? "Actualizar Producto" : "Guardar Producto")}
                   </button>
                 </div>
               </form>

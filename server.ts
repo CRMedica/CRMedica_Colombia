@@ -93,9 +93,13 @@ app.post("/api/auth/forgot-password", async (req, res) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${process.env.APP_URL || "http://localhost:3000"}/reset-password`,
     });
+    if (error) {
+       console.error("Supabase Reset Password Error:", error);
+    }
     // Siempre responder éxito (no revelar si el correo existe)
     res.json({ message: "Si el correo está registrado, recibirás un enlace." });
   } catch (err) {
+    console.error("Server Forgot Password Error:", err);
     res.json({ message: "Si el correo está registrado, recibirás un enlace." });
   }
 });

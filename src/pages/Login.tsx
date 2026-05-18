@@ -108,7 +108,7 @@ export default function Login({ onLogin }: LoginProps) {
     resetMessages();
     try {
       if (!supabase) {
-        throw new Error("Configuración de Supabase incompleta. Verifica las variables de entorno.");
+        throw new Error("⚠️ Configuración incompleta. Debes añadir VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en 'Settings > Secrets' y reiniciar el servidor.");
       }
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider as any,

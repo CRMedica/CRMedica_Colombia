@@ -82,11 +82,17 @@ export default function App() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (supabase) {
+      try {
+        await supabase.auth.signOut();
+      } catch (err) {
+        console.error("Error signing out from Supabase:", err);
+      }
+    }
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    window.location.href = '/login'; // Force a full clean redirect
+    window.location.href = '/login'; 
   };
 
   if (!ready) return null;

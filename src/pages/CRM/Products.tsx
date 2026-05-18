@@ -531,54 +531,45 @@ export default function Products() {
                        />
                     </div>
 
-                    <div className="space-y-2">
-                       <label className="text-sm font-bold text-slate-700 ml-1">Imagen del Producto</label>
-                       <div className="flex gap-4 items-start">
-                         <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-shrink-0 overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center group relative">
-                           {previewUrl ? (
-                             <img 
-                               src={previewUrl} 
-                               className="w-full h-full object-cover"
-                               onError={(e) => {
-                                 (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
-                               }}
-                             />
-                           ) : (
-                             <Package className="text-slate-300" size={32} />
-                           )}
-                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Edit className="text-white" size={20} />
-                           </div>
-                           <input 
-                             type="file" 
-                             accept="image/*"
-                             onChange={handleFileChange}
-                             className="absolute inset-0 opacity-0 cursor-pointer"
-                           />
-                         </div>
-                         <div className="flex-1">
-                           <p className="text-xs text-slate-500 mb-2">Haz clic en el recuadro para subir una imagen (PNG, JPG, WEBP). Máximo 5MB.</p>
-                           <div className="space-y-3">
-                             <div className="relative">
-                               <input 
-                                 type="url" 
-                                 value={formData.image_url}
-                                 onChange={(e) => {
-                                   setFormData({...formData, image_url: e.target.value});
-                                   setPreviewUrl(e.target.value);
-                                 }}
-                                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition-all outline-hidden text-[10px] text-blue-600"
-                                 placeholder="O pega una URL de imagen..."
-                               />
-                               <Info size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" />
-                             </div>
-                             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
-                               <TrendingUp size={14} />
-                               Las imágenes locales se guardarán en el servidor.
-                             </div>
-                           </div>
-                         </div>
-                       </div>
+                    <div className="space-y-4">
+                      <label className="text-sm font-bold text-slate-700 ml-1">Imagen del Producto</label>
+                      <div className="flex gap-6 items-center p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                        <div className="w-24 h-24 rounded-2xl bg-white flex-shrink-0 overflow-hidden border-2 border-dashed border-slate-300 flex items-center justify-center group relative shadow-sm">
+                          {previewUrl ? (
+                            <img 
+                              src={previewUrl} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                              }}
+                            />
+                          ) : (
+                            <Package className="text-slate-300" size={32} />
+                          )}
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                             <Edit className="text-white" size={20} />
+                          </div>
+                          <input 
+                            type="file" 
+                            accept="image/png, image/jpeg, image/jpg, image/webp"
+                            onChange={handleFileChange}
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                          />
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <p className="text-sm font-medium text-slate-900">Subir nueva imagen</p>
+                          <p className="text-xs text-slate-500 leading-relaxed">
+                            Haz clic en el recuadro para seleccionar un archivo del computador.<br/>
+                            Formatos permitidos: <span className="font-semibold">PNG, JPG, WEBP</span>. Máximo 5MB.
+                          </p>
+                          {selectedFile && (
+                            <div className="flex items-center gap-2 px-2 py-1 bg-green-50 text-green-700 rounded-md text-[10px] w-fit">
+                              <CheckCircle size={12} />
+                              Imagen seleccionada: {selectedFile.name}
+                            </div>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

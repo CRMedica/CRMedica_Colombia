@@ -1,19 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Isomorphic environment variable access
-const getEnv = (name: string) => {
-  if (typeof process !== 'undefined' && process.env && process.env[name]) {
-    return process.env[name];
-  }
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[name]) {
-    // @ts-ignore
-    return import.meta.env[name];
-  }
-  return '';
-};
-
-const apiKey = getEnv('GEMINI_API_KEY');
+const apiKey = (import.meta.env?.VITE_GEMINI_API_KEY as string) || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : '') || '';
 
 export const ai = new GoogleGenAI({
   apiKey: apiKey || '',

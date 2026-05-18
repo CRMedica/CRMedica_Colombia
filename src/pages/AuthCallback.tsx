@@ -13,6 +13,9 @@ export default function AuthCallback({ onLogin }: AuthCallbackProps) {
   useEffect(() => {
     const handleAuth = async () => {
       try {
+        if (!supabase) {
+          throw new Error("Supabase client is not initialized. Please check your environment variables.");
+        }
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) throw error;

@@ -1,29 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Isomorphic environment variable access
-const getEnv = (name: string) => {
-  if (typeof process !== 'undefined' && process.env && process.env[name]) {
-    return process.env[name];
-  }
-  // @ts-ignore
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[name]) {
-    // @ts-ignore
-    return import.meta.env[name];
-  }
-  return '';
-};
-
-const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
-const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
+// Access variables safely for both client (Vite) and server (Node)
+const supabaseUrl = (import.meta.env?.VITE_SUPABASE_URL as string) || (typeof process !== 'undefined' ? process.env.SUPABASE_URL : '') || '';
+const supabaseKey = (import.meta.env?.VITE_SUPABASE_ANON_KEY as string) || (typeof process !== 'undefined' ? process.env.SUPABASE_ANON_KEY : '') || '';
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('Supabase URL or Key is missing in environment variables. Auth features might not work as expected.');
+  console.warn('Supabase URL or Key is missing. Auth features might not work until configured in the environment.');
 }
 
-export const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  }
-});
+// Only create client if URL is present to avoid immediate crash on module load
+export const supabase = supabaseUrl 
+  ? createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    })
+  : null as any; // Cast as any to avoid type errors in components, but logic should guard usage

@@ -107,6 +107,9 @@ export default function Login({ onLogin }: LoginProps) {
     setLoading(true);
     resetMessages();
     try {
+      if (!supabase) {
+        throw new Error("Configuración de Supabase incompleta. Verifica las variables de entorno.");
+      }
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: provider as any,
         options: {

@@ -26,6 +26,8 @@ export default function App() {
 
   useEffect(() => {
     // Escuchar cambios de autenticación en Supabase
+    if (!supabase) return;
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Supabase Auth Event:", event);
       if (event === 'SIGNED_IN' && session && !localStorage.getItem('token')) {

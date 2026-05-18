@@ -86,6 +86,20 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
+// ── RECUPERAR CONTRASEÑA ──
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.APP_URL}/reset-password`,
+    });
+    // Siempre responder éxito (no revelar si el correo existe)
+    res.json({ message: "Si el correo está registrado, recibirás un enlace." });
+  } catch (err) {
+    res.json({ message: "Si el correo está registrado, recibirás un enlace." });
+  }
+});
+
 app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   res.json(req.user);
 });

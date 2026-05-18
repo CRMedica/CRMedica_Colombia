@@ -1,10 +1,12 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import multer from "multer";
 import { createServer as createViteServer } from "vite";
 import { supabase } from "./src/lib/supabase.js";
 import { ai } from "./src/lib/gemini.js";
@@ -16,6 +18,25 @@ const app = express();
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret_respiracrm_2024";
 
+// Ensure uploads directory exists
+const uploadDir = path.join(process.cwd(), "public", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Multer Config
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, uploadDir),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ 
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB
+});
+
 // Middlewares
 app.use(express.json());
 app.use(cors());
@@ -25,6 +46,9 @@ app.use(
     contentSecurityPolicy: false, // Disable for Vite dev
   })
 );
+
+// Serve static uploads
+app.use("/uploads", express.static(uploadDir));
 
 // Auth Middleware
 const authenticateToken = (req: any, res: any, next: any) => {
@@ -111,8 +135,15 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
 // --- OAUTH ROUTES ---
 app.get("/api/auth/oauth-url", async (req, res) => {
   const { provider } = req.query;
-  const redirectUri = `${process.env.APP_URL || "http://localhost:3000"}/auth/callback`;
   
+  // Use explicit env var or detect from host header
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+  const redirectUri = `${baseUrl}/auth/callback`;
+  
+  console.log("OAuth Redirect URI:", redirectUri);
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: provider as any,
     options: {
@@ -241,6 +272,13 @@ app.post("/api/auth/oauth-exchange", async (req, res) => {
   }
 });
 
+// --- UPLOAD ROUTE ---
+app.post("/api/upload", authenticateToken, upload.single("file"), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+  const url = `/uploads/${req.file.filename}`;
+  res.json({ url });
+});
+
 // --- CRM ROUTES (Generic CRUD) ---
 const tables = [
   "customers",
@@ -295,13 +333,17 @@ tables.forEach((table) => {
 
   // Update
   app.put(`/api/${table}/:id`, authenticateToken, async (req, res) => {
+    console.log(`Updating ${table} ID ${req.params.id} with:`, req.body);
     const { data, error } = await supabase
       .from(table)
       .update(req.body)
       .eq("id", req.params.id)
       .select()
       .single();
-    if (error) return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error(`Update Error on ${table}:`, error);
+      return res.status(400).json({ error: error.message });
+    }
     res.json(data);
   });
 
@@ -319,20 +361,34 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   if (!message) return res.status(400).json({ error: "Mensaje vacío" });
   
   try {
-    const response = await ai.models.generateContent({
+    const result = await ai.models.generateContent({
       model: "gemini-1.5-flash",
       contents: [{ role: "user", parts: [{ text: message }] }],
       generationConfig: {
-        systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
+        maxOutputTokens: 500,
+        temperature: 0.7,
+      },
+      systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
         Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
         Contexto actual del usuario: ${JSON.stringify(context)}.
-        Responde de forma profesional, amable y concisa. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
-      }
+        Responde de forma profesional, amable y en español. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
     });
 
-    res.json({ response: response.text });
+    // Handle different response formats based on SDK version
+    let botResponse = "";
+    if (typeof result.response?.text === 'function') {
+      botResponse = result.response.text();
+    } else if (typeof result.response?.text === 'string') {
+      botResponse = result.response.text;
+    } else if (result.text) {
+      botResponse = result.text;
+    } else {
+      botResponse = "No pude generar una respuesta clara.";
+    }
+
+    res.json({ response: botResponse });
   } catch (err: any) {
-    console.error("AI Chat Error:", err);
+    console.error("AI Chat Error Details:", err);
     res.status(500).json({ error: "Error en el asistente AI: " + (err.message || 'Error desconocido') });
   }
 });

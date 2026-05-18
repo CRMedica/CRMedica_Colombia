@@ -33,6 +33,8 @@ export default function Products() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [formData, setFormData] = useState<Partial<Product>>({
     sku: "",
     name: "",
@@ -69,6 +71,8 @@ export default function Products() {
   const handleEdit = (product: Product) => {
     setEditingId(product.id);
     setFormData(product);
+    setPreviewUrl(product.image_url);
+    setSelectedFile(null);
     setIsModalOpen(true);
   };
 
@@ -87,27 +91,64 @@ export default function Products() {
       warranty: "1 año",
       image_url: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
     });
+    setPreviewUrl("https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400");
+    setSelectedFile(null);
     setIsModalOpen(true);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Create a clean object for the API
+      let finalImageUrl = formData.image_url;
+
+      // Handle file upload if present
+      if (selectedFile) {
+        const uploadFormData = new FormData();
+        uploadFormData.append("file", selectedFile);
+        
+        const token = localStorage.getItem("token");
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          },
+          body: uploadFormData
+        });
+        
+        const uploadData = await res.json();
+        if (!res.ok) throw new Error(uploadData.error || "Error al subir la imagen");
+        finalImageUrl = uploadData.url;
+      }
+
+      // Create a clean object with only database-compatible fields
       const payload = {
-        sku: formData.sku,
-        name: formData.name,
-        category: formData.category,
-        brand: formData.brand,
-        description: formData.description,
-        price: Number(formData.price),
-        tax_rate: Number(formData.tax_rate),
-        stock: Number(formData.stock),
-        provider: formData.provider,
-        warranty: formData.warranty,
-        image_url: formData.image_url
+        sku: String(formData.sku || "").trim(),
+        name: String(formData.name || "").trim(),
+        category: String(formData.category || "").trim(),
+        brand: String(formData.brand || "").trim(),
+        description: String(formData.description || "").trim(),
+        price: Number(formData.price || 0),
+        tax_rate: Number(formData.tax_rate || 19),
+        stock: Number(formData.stock || 0),
+        provider: String(formData.provider || "").trim(),
+        warranty: String(formData.warranty || "").trim(),
+        image_url: finalImageUrl
       };
+      
+      console.log("Saving Product:", { editingId, payload });
       
       if (editingId) {
         await api.put(`/products/${editingId}`, payload);
@@ -116,9 +157,10 @@ export default function Products() {
       }
       await fetchProducts();
       setIsModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Save Error:", err);
-      alert("Error al guardar el producto. Por favor verifica los datos.");
+      const msg = err.message || "Error desconocido";
+      alert(`Error al guardar el producto: ${msg}`);
     } finally {
       setIsSaving(false);
     }
@@ -490,28 +532,50 @@ export default function Products() {
                     </div>
 
                     <div className="space-y-2">
-                       <label className="text-sm font-bold text-slate-700 ml-1">URL de Imagen</label>
+                       <label className="text-sm font-bold text-slate-700 ml-1">Imagen del Producto</label>
                        <div className="flex gap-4 items-start">
-                         <div className="w-20 h-20 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
-                           <img 
-                             src={formData.image_url} 
-                             className="w-full h-full object-cover"
-                             onError={(e) => {
-                               (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
-                             }}
+                         <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-shrink-0 overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center group relative">
+                           {previewUrl ? (
+                             <img 
+                               src={previewUrl} 
+                               className="w-full h-full object-cover"
+                               onError={(e) => {
+                                 (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                               }}
+                             />
+                           ) : (
+                             <Package className="text-slate-300" size={32} />
+                           )}
+                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Edit className="text-white" size={20} />
+                           </div>
+                           <input 
+                             type="file" 
+                             accept="image/*"
+                             onChange={handleFileChange}
+                             className="absolute inset-0 opacity-0 cursor-pointer"
                            />
                          </div>
                          <div className="flex-1">
-                           <input 
-                             type="url" 
-                             value={formData.image_url}
-                             onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden text-xs text-blue-600 mb-2"
-                             placeholder="https://..."
-                           />
-                           <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
-                             <Info size={14} />
-                             Pega una URL válida. Se mostrará el producto en el catálogo.
+                           <p className="text-xs text-slate-500 mb-2">Haz clic en el recuadro para subir una imagen (PNG, JPG, WEBP). Máximo 5MB.</p>
+                           <div className="space-y-3">
+                             <div className="relative">
+                               <input 
+                                 type="url" 
+                                 value={formData.image_url}
+                                 onChange={(e) => {
+                                   setFormData({...formData, image_url: e.target.value});
+                                   setPreviewUrl(e.target.value);
+                                 }}
+                                 className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition-all outline-hidden text-[10px] text-blue-600"
+                                 placeholder="O pega una URL de imagen..."
+                               />
+                               <Info size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300" />
+                             </div>
+                             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
+                               <TrendingUp size={14} />
+                               Las imágenes locales se guardarán en el servidor.
+                             </div>
                            </div>
                          </div>
                        </div>

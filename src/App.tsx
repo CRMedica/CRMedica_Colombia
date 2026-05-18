@@ -54,6 +54,7 @@ export default function App() {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
+    window.location.href = '/login'; // Force a full clean redirect
   };
 
   if (!ready) return null;

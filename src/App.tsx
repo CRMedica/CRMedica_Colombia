@@ -5,6 +5,8 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/CRM/Products';
+import AuthCallback from './pages/AuthCallback';
+import { supabase } from './lib/supabase';
 import { User } from './types';
 
 // CRM Pages placeholders
@@ -21,6 +23,33 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    // Escuchar cambios de autenticación en Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Supabase Auth Event:", event);
+      if (event === 'SIGNED_IN' && session && !localStorage.getItem('token')) {
+        try {
+          const res = await fetch("/api/auth/oauth-exchange", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+              email: session.user.email, 
+              full_name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0]
+            }),
+          });
+          if (res.ok) {
+            const data = await res.json();
+            handleLogin(data.token, data.user);
+          }
+        } catch (err) {
+          console.error("Exchange error in onAuthStateChange:", err);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     const fetchMe = async () => {
@@ -50,7 +79,8 @@ export default function App() {
     setUser(newUser);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
@@ -64,6 +94,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+        <Route path="/auth/callback" element={<AuthCallback onLogin={handleLogin} />} />
         
         <Route path="/*" element={
           user ? (

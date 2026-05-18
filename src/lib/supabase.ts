@@ -1,18 +1,29 @@
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 
-dotenv.config();
+// Isomorphic environment variable access
+const getEnv = (name: string) => {
+  if (typeof process !== 'undefined' && process.env && process.env[name]) {
+    return process.env[name];
+  }
+  // @ts-ignore
+  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[name]) {
+    // @ts-ignore
+    return import.meta.env[name];
+  }
+  return '';
+};
 
-const supabaseUrl = process.env.SUPABASE_URL || '';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || '';
+const supabaseUrl = getEnv('VITE_SUPABASE_URL') || getEnv('SUPABASE_URL');
+const supabaseKey = getEnv('VITE_SUPABASE_ANON_KEY') || getEnv('SUPABASE_ANON_KEY');
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn('Supabase URL or Key is missing in environment variables.');
+  console.warn('Supabase URL or Key is missing in environment variables. Auth features might not work as expected.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseKey, {
+export const supabase = createClient(supabaseUrl || '', supabaseKey || '', {
   auth: {
-    autoRefreshToken: false,
-    persistSession: false
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
   }
 });

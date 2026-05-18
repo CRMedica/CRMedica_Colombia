@@ -200,7 +200,22 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
           if (authData.token) {
             finish(authData);
           } else if (accessToken) {
-            finish({ type: "HASH_AUTH", hash: window.location.hash });
+            // Implicit flow: exchange token for custom JWT
+            document.getElementById('status').innerText = 'Validando sesión...';
+            fetch('/api/auth/verify-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ access_token: accessToken })
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.token) {
+                finish(data);
+              } else {
+                finish({ error: data.error || 'Error al validar sesión' });
+              }
+            })
+            .catch(err => finish({ error: 'Error de red al validar sesión' }));
           } else if (authData.error) {
             finish(authData);
           } else {
@@ -211,12 +226,21 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
             } else {
               setTimeout(() => {
                 const retryHash = new URLSearchParams(window.location.hash.substring(1));
-                if (retryHash.get('access_token')) {
-                  finish({ type: "HASH_AUTH", hash: window.location.hash });
+                const retryToken = retryHash.get('access_token');
+                if (retryToken) {
+                  // Retry the same token validation logic
+                  fetch('/api/auth/verify-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ access_token: retryToken })
+                  })
+                  .then(res => res.json())
+                  .then(data => finish(data))
+                  .catch(err => finish({ error: 'Retry failed' }));
                 } else {
                   finish({ error: authData.error || "No se detectó código ni token de Google." });
                 }
-              }, 800);
+              }, 1000);
             }
           }
 
@@ -265,6 +289,41 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
 
   // If no code, the client script will check for # fragment
   res.send(sendMessage({}));
+});
+
+// Exchange access_token (from hash) for a custom JWT
+app.post("/api/auth/verify-token", async (req, res) => {
+  const { access_token } = req.body;
+  if (!access_token) return res.status(400).json({ error: "No access token provided" });
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(access_token);
+    if (error || !user) throw error || new Error("Invalid token");
+
+    let { data: dbUser } = await supabase.from("users").select("*").eq("email", user.email).single();
+    
+    if (!dbUser) {
+      const { data: newUser, error: createError } = await supabase.from("users").insert([{
+        email: user.email,
+        full_name: user.user_metadata.full_name || user.email?.split('@')[0],
+        role: 'vendedor',
+        status: 'activo'
+      }]).select().single();
+      if (createError) throw createError;
+      dbUser = newUser;
+    }
+
+    const token = jwt.sign(
+      { id: dbUser?.id || user.id, email: user.email, role: dbUser?.role || 'vendedor' },
+      JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    
+    res.json({ token, user: dbUser || user });
+  } catch (err: any) {
+    console.error("Verify Token Error:", err);
+    res.status(401).json({ error: err.message });
+  }
 });
 
 // Exchange OAuth code/tokens for a custom JWT

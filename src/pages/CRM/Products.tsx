@@ -145,7 +145,7 @@ export default function Products() {
         stock: Number(formData.stock || 0),
         provider: String(formData.provider || "").trim(),
         warranty: String(formData.warranty || "").trim(),
-        image_url: finalImageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
+        image_url: finalImageUrl || (editingId ? formData.image_url : "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400")
       };
       
       console.log("Saving Product payload:", payload);

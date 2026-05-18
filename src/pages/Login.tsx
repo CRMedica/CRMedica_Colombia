@@ -130,12 +130,6 @@ export default function Login({ onLogin }: LoginProps) {
         } else if (payload.token) {
           onLogin(payload.token, payload.user);
           navigate("/dashboard");
-        } else if (payload.type === "HASH_AUTH") {
-          // If we got a hash, Supabase usually handles it automatically 
-          // if we were in a client-side flow. But here we are using 
-          // custom JWTs from the server. Let's try to notify the user.
-          setError("Se detectó una autenticación por fragmento (hash). Por favor intenta de nuevo o contacta a soporte.");
-          setLoading(false);
         }
       }
     };

@@ -164,7 +164,6 @@ app.get("/api/auth/oauth-url", async (req, res) => {
 app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
   const { code, error, error_description } = req.query;
   console.log("OAuth Callback hit. Query:", req.query);
-  console.log("OAuth Callback hit. Hash (not visible to server):", req.path);
   
   // Script to send message back to opener
   const sendMessage = (data: any) => `
@@ -179,62 +178,45 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
       </head>
       <body>
         <div class="loader"></div>
-        <p id="status">Autenticación completada con éxito.</p>
-        <p id="substatus" style="font-size: 14px; color: #64748b;">Esta ventana se cerrará automáticamente en un momento.</p>
+        <p id="status">Verificando sesión...</p>
+        <p id="substatus" style="font-size: 14px; color: #64748b;">Esta ventana se cerrará automáticamente.</p>
         <script>
           const authData = ${JSON.stringify(data)};
           const channel = new BroadcastChannel('oauth_channel');
           
           function finish(dataToSend) {
             console.log("Finishing Auth with payload:", dataToSend);
-            
-            // 1. BroadcastChannel
             channel.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend });
-            
-            // 2. window.opener
             if (window.opener) {
-              try {
-                window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend }, "*");
-              } catch (e) {
-                console.error("Error sending postMessage:", e);
-              }
+              try { window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend }, "*"); } catch (e) {}
             }
-            
-            // Close after a short delay to ensure messages are sent
             setTimeout(() => window.close(), 1500);
           }
 
-          // Check if we are in the callback phase
-          const urlParams = new URLSearchParams(window.location.search);
-          const errorCode = urlParams.get('error');
-          const errorDesc = urlParams.get('error_description');
-
-          if (authData.error) {
+          const hash = window.location.hash.substring(1);
+          const hashParams = new URLSearchParams(hash);
+          const accessToken = hashParams.get('access_token');
+          
+          if (authData.token) {
             finish(authData);
-          } else if (errorCode) {
-            finish({ error: errorDesc || errorCode });
-          } else if (authData.token) {
+          } else if (accessToken) {
+            finish({ type: "HASH_AUTH", hash: window.location.hash });
+          } else if (authData.error) {
             finish(authData);
           } else {
-            // Check for tokens in hash (implicit flow or Supabase automatic handling)
-            const hash = window.location.hash.substring(1);
-            if (hash) {
-                // If there's a hash, it might be Supabase already handling it on the client
-                // but since we are in a custom server callback, we should try to extract it
-                // or just wait a bit if Supabase client is present (unlikely in this minimal HTML)
-                const hashParams = new URLSearchParams(hash);
-                const accessToken = hashParams.get('access_token');
-                
-                if (accessToken) {
-                   // If we have an access token, we can try to use it
-                   // but usually the server callback wants to send its own JWT.
-                   // Let's just pass the whole hash along as info
-                   finish({ type: "HASH_AUTH", hash: hash });
-                } else {
-                   finish({ error: "No se pudo extraer el token del hash." });
-                }
+            const urlParams = new URLSearchParams(window.location.search);
+            const qErr = urlParams.get('error_description') || urlParams.get('error');
+            if (qErr) {
+              finish({ error: qErr });
             } else {
-              finish({ error: "No se recibió código ni token de autenticación." });
+              setTimeout(() => {
+                const retryHash = new URLSearchParams(window.location.hash.substring(1));
+                if (retryHash.get('access_token')) {
+                  finish({ type: "HASH_AUTH", hash: window.location.hash });
+                } else {
+                  finish({ error: authData.error || "No se detectó código ni token de Google." });
+                }
+              }, 800);
             }
           }
 
@@ -257,44 +239,32 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
 
       const { user } = data;
       if (user) {
-        let { data: dbUser, error: dbError } = await supabase
-          .from("users")
-          .select("*")
-          .eq("email", user.email)
-          .single();
-
-        if (!dbUser && (!dbError || dbError.code === "PGRST116")) {
-          const { data: newUser, error: createError } = await supabase
-            .from("users")
-            .insert([{ 
-              email: user.email, 
-              full_name: user.user_metadata?.full_name || user.email?.split('@')[0], 
-              role: "sales",
-              password_hash: "OAUTH_USER"
-            }])
-            .select()
-            .single();
-          if (createError) throw createError;
+        let { data: dbUser } = await supabase.from("users").select("*").eq("email", user.email).single();
+        if (!dbUser) {
+          const { data: newUser } = await supabase.from("users").insert([{
+            email: user.email,
+            full_name: user.user_metadata.full_name || user.email?.split('@')[0],
+            role: 'vendedor',
+            status: 'activo'
+          }]).select().single();
           dbUser = newUser;
-        } else if (dbError && dbError.code !== "PGRST116") {
-          throw dbError;
         }
 
         const token = jwt.sign(
-          { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name },
+          { id: dbUser?.id || user.id, email: user.email, role: dbUser?.role || 'vendedor' },
           JWT_SECRET,
-          { expiresIn: "10h" }
+          { expiresIn: "7d" }
         );
-
-        return res.send(sendMessage({ token, user: { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name } }));
+        return res.send(sendMessage({ token, user: dbUser || user }));
       }
     } catch (err: any) {
-      console.error("OAuth Exchange Error:", err);
-      return res.send(sendMessage({ error: err.message }));
+      console.error("Auth Exchange Error:", err);
+      return res.send(sendMessage({ error: "Error al intercambiar el código: " + err.message }));
     }
   }
 
-  res.send(sendMessage({ error: "No se recibió código de Google." }));
+  // If no code, the client script will check for # fragment
+  res.send(sendMessage({}));
 });
 
 // Exchange OAuth code/tokens for a custom JWT

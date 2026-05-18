@@ -149,7 +149,11 @@ app.get("/api/auth/oauth-url", async (req, res) => {
     provider: provider as any,
     options: {
       redirectTo: redirectUri,
-      skipBrowserRedirect: true
+      skipBrowserRedirect: true,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent'
+      }
     }
   });
 
@@ -182,42 +186,55 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
           const channel = new BroadcastChannel('oauth_channel');
           
           function finish(dataToSend) {
+            console.log("Finishing Auth with payload:", dataToSend);
+            
             // 1. BroadcastChannel
             channel.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend });
             
             // 2. window.opener
             if (window.opener) {
-              window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend }, "*");
+              try {
+                window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend }, "*");
+              } catch (e) {
+                console.error("Error sending postMessage:", e);
+              }
             }
             
-            setTimeout(() => window.close(), 1000);
+            // Close after a short delay to ensure messages are sent
+            setTimeout(() => window.close(), 1500);
           }
 
-          // If there's an error from the server directly
-          if (authData.error && !window.location.hash) {
+          // Check if we are in the callback phase
+          const urlParams = new URLSearchParams(window.location.search);
+          const errorCode = urlParams.get('error');
+          const errorDesc = urlParams.get('error_description');
+
+          if (authData.error) {
             finish(authData);
+          } else if (errorCode) {
+            finish({ error: errorDesc || errorCode });
           } else if (authData.token) {
             finish(authData);
           } else {
-            // Check for tokens in hash (implicit flow fallback)
+            // Check for tokens in hash (implicit flow or Supabase automatic handling)
             const hash = window.location.hash.substring(1);
             if (hash) {
-              const params = new URLSearchParams(hash);
-              const accessToken = params.get('access_token');
-              if (accessToken) {
-                // If we found a token in hash, we need to tell the parent 
-                // but usually the parent needs our custom JWT.
-                // For now, if we are in this situation, we might need to 
-                // use the token to get the user and then sign our JWT.
-                // However, the simplest is to redirect to /auth/callback?code=... if possible
-                // but we can't easily. 
-                // Let's just report the error or the data we have.
-                finish({ error: "Implicit flow detected. Please use the code flow for full CRM integration." });
-              } else {
-                finish({ error: "No se pudo completar la autenticación (no code/no token)." });
-              }
+                // If there's a hash, it might be Supabase already handling it on the client
+                // but since we are in a custom server callback, we should try to extract it
+                // or just wait a bit if Supabase client is present (unlikely in this minimal HTML)
+                const hashParams = new URLSearchParams(hash);
+                const accessToken = hashParams.get('access_token');
+                
+                if (accessToken) {
+                   // If we have an access token, we can try to use it
+                   // but usually the server callback wants to send its own JWT.
+                   // Let's just pass the whole hash along as info
+                   finish({ type: "HASH_AUTH", hash: hash });
+                } else {
+                   finish({ error: "No se pudo extraer el token del hash." });
+                }
             } else {
-              finish({ error: authData.error || "No se recibió código de autenticación de Google." });
+              finish({ error: "No se recibió código ni token de autenticación." });
             }
           }
 
@@ -435,7 +452,7 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
     }
 
     const result = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       contents: [{ role: "user", parts: [{ text: message }] }],
       config: {
         maxOutputTokens: 800,

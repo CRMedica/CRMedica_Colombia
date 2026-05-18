@@ -145,15 +145,17 @@ export default function Products() {
         stock: Number(formData.stock || 0),
         provider: String(formData.provider || "").trim(),
         warranty: String(formData.warranty || "").trim(),
-        image_url: finalImageUrl
+        image_url: finalImageUrl || "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400"
       };
       
-      console.log("Saving Product:", { editingId, payload });
+      console.log("Saving Product payload:", payload);
       
       if (editingId) {
-        await api.put(`/products/${editingId}`, payload);
+        const result = await api.put(`/products/${editingId}`, payload);
+        console.log("Update result:", result);
       } else {
-        await api.post("/products", payload);
+        const result = await api.post("/products", payload);
+        console.log("Create result:", result);
       }
       await fetchProducts();
       setIsModalOpen(false);
@@ -533,37 +535,52 @@ export default function Products() {
 
                     <div className="space-y-2">
                        <label className="text-sm font-bold text-slate-700 ml-1">Imagen del Producto</label>
-                       <div className="flex gap-4 items-start">
-                         <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-shrink-0 overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center group relative">
-                           {previewUrl ? (
-                             <img 
-                               src={previewUrl} 
-                               className="w-full h-full object-cover"
-                               onError={(e) => {
-                                 (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
-                               }}
+                       <div className="flex flex-col gap-4">
+                         <div className="flex gap-4 items-start">
+                           <div className="w-24 h-24 rounded-2xl bg-slate-100 flex-shrink-0 overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center group relative">
+                             {previewUrl ? (
+                               <img 
+                                 src={previewUrl} 
+                                 className="w-full h-full object-cover"
+                                 onError={(e) => {
+                                   (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                                 }}
+                               />
+                             ) : (
+                               <Package className="text-slate-300" size={32} />
+                             )}
+                             <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Edit className="text-white" size={20} />
+                             </div>
+                             <input 
+                               type="file" 
+                               accept=".png,.jpg,.jpeg,.webp"
+                               onChange={handleFileChange}
+                               className="absolute inset-0 opacity-0 cursor-pointer"
                              />
-                           ) : (
-                             <Package className="text-slate-300" size={32} />
-                           )}
-                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Edit className="text-white" size={20} />
                            </div>
-                           <input 
-                             type="file" 
-                             accept=".png,.jpg,.jpeg,.webp"
-                             onChange={handleFileChange}
-                             className="absolute inset-0 opacity-0 cursor-pointer"
-                           />
-                         </div>
-                         <div className="flex-1">
-                           <p className="text-xs text-slate-500 mb-2">Haz clic en el recuadro para subir una imagen (PNG, JPG, JPEG o WEBP). Máximo 5MB.</p>
-                           <div className="space-y-3">
-                             <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
-                               <TrendingUp size={14} />
-                               Las imágenes se guardarán de forma segura en el servidor.
+                           <div className="flex-1">
+                             <p className="text-xs text-slate-500 mb-2">Sube una imagen o ingresa una URL abajo. Máximo 5MB.</p>
+                             <div className="space-y-3">
+                               <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
+                                 <TrendingUp size={14} />
+                                 Las imágenes subidas se guardan en el servidor. 
+                               </div>
                              </div>
                            </div>
+                         </div>
+                         <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">O usar URL externa (Permanencia total)</label>
+                            <input 
+                              type="text" 
+                              value={formData.image_url}
+                              onChange={(e) => {
+                                setFormData({...formData, image_url: e.target.value});
+                                setPreviewUrl(e.target.value);
+                              }}
+                              placeholder="https://ejemplo.com/imagen.jpg"
+                              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-hidden focus:border-blue-500"
+                            />
                          </div>
                        </div>
                     </div>

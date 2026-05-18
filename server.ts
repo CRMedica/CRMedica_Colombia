@@ -139,7 +139,8 @@ app.get("/api/auth/oauth-url", async (req, res) => {
   // Use explicit env var or detect from host header
   const protocol = req.headers['x-forwarded-proto'] || req.protocol;
   const host = req.headers['x-forwarded-host'] || req.get('host');
-  const baseUrl = (process.env.APP_URL || `${protocol}://${host}`).replace(/\/$/, "");
+  // Prefer the host from the request to ensure redirects stay on the same subdomain (pre vs dev)
+  const baseUrl = `${protocol}://${host}`;
   const redirectUri = `${baseUrl}/auth/callback`;
   
   console.log("OAuth Redirect URI:", redirectUri);
@@ -157,7 +158,9 @@ app.get("/api/auth/oauth-url", async (req, res) => {
 });
 
 app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
-  const { code } = req.query;
+  const { code, error, error_description } = req.query;
+  console.log("OAuth Callback hit. Query:", req.query);
+  console.log("OAuth Callback hit. Hash (not visible to server):", req.path);
   
   // Script to send message back to opener
   const sendMessage = (data: any) => `
@@ -166,55 +169,77 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
         <title>Autenticando...</title>
         <style>
           body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc; color: #1e293b; text-align: center; }
-          .loader { border: 3px solid #f3f3f3; border-top: 3px solid #2563eb; border-radius: 50%; width: 24px; height: 24px; animate: spin 1s linear infinite; margin-bottom: 16px; }
+          .loader { border: 3px solid #f3f3f3; border-top: 3px solid #2563eb; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 16px; }
           @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         </style>
       </head>
       <body>
         <div class="loader"></div>
-        <p>Autenticación completada con éxito.</p>
-        <p style="font-size: 14px; color: #64748b;">Esta ventana se cerrará automáticamente en un momento.</p>
+        <p id="status">Autenticación completada con éxito.</p>
+        <p id="substatus" style="font-size: 14px; color: #64748b;">Esta ventana se cerrará automáticamente en un momento.</p>
         <script>
           const authData = ${JSON.stringify(data)};
+          const channel = new BroadcastChannel('oauth_channel');
           
-          // 1. Try BroadcastChannel (Modern, avoids window.opener issues)
-          try {
-            const bc = new BroadcastChannel('oauth_channel');
-            bc.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: authData });
+          function finish(dataToSend) {
+            // 1. BroadcastChannel
+            channel.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend });
+            
+            // 2. window.opener
+            if (window.opener) {
+              window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: dataToSend }, "*");
+            }
+            
             setTimeout(() => window.close(), 1000);
-          } catch (e) {
-            console.error("BroadcastChannel error:", e);
           }
 
-          // 2. Try window.opener.postMessage (Classic)
-          if (window.opener) {
-            try {
-              window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: authData }, "*");
-              setTimeout(() => window.close(), 1000);
-            } catch (e) {
-              console.error("postMessage error:", e);
+          // If there's an error from the server directly
+          if (authData.error && !window.location.hash) {
+            finish(authData);
+          } else if (authData.token) {
+            finish(authData);
+          } else {
+            // Check for tokens in hash (implicit flow fallback)
+            const hash = window.location.hash.substring(1);
+            if (hash) {
+              const params = new URLSearchParams(hash);
+              const accessToken = params.get('access_token');
+              if (accessToken) {
+                // If we found a token in hash, we need to tell the parent 
+                // but usually the parent needs our custom JWT.
+                // For now, if we are in this situation, we might need to 
+                // use the token to get the user and then sign our JWT.
+                // However, the simplest is to redirect to /auth/callback?code=... if possible
+                // but we can't easily. 
+                // Let's just report the error or the data we have.
+                finish({ error: "Implicit flow detected. Please use the code flow for full CRM integration." });
+              } else {
+                finish({ error: "No se pudo completar la autenticación (no code/no token)." });
+              }
+            } else {
+              finish({ error: authData.error || "No se recibió código de autenticación de Google." });
             }
           }
 
-          // fallback: if after 3 seconds still open, show manual close button
           setTimeout(() => {
             document.body.innerHTML = '<h1>¡Listo!</h1><p>Ya puedes cerrar esta ventana y regresar a la aplicación.</p><button onclick="window.close()" style="padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer;">Cerrar ventana</button>';
-          }, 3000);
+          }, 5000);
         </script>
       </body>
     </html>
   `;
 
+  if (error) {
+    return res.send(sendMessage({ error: error_description || error }));
+  }
+
   if (code) {
     try {
-      // Create a fresh client for the server exchange that uses the anon key or service role
-      // But we need to use the same logic as the initial request
-      const { data, error } = await supabase.auth.exchangeCodeForSession(code as string);
-      if (error) throw error;
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code as string);
+      if (exchangeError) throw exchangeError;
 
       const { user } = data;
       if (user) {
-        // Find or create in custom users table
         let { data: dbUser, error: dbError } = await supabase
           .from("users")
           .select("*")
@@ -252,7 +277,7 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
     }
   }
 
-  res.send(sendMessage({ error: "No code provided" }));
+  res.send(sendMessage({ error: "No se recibió código de Google." }));
 });
 
 // Exchange OAuth code/tokens for a custom JWT
@@ -370,7 +395,7 @@ tables.forEach((table) => {
       .select()
       .single();
     if (error) {
-      console.error(`Update Error on ${table}:`, error);
+       console.error(`Update Error on ${table}:`, error);
       return res.status(400).json({ error: error.message });
     }
     res.json(data);
@@ -390,16 +415,43 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   if (!message) return res.status(400).json({ error: "Mensaje vacío" });
   
   try {
+    // Enrich context with real data based on the current path
+    let enrichedContext = { ...context };
+    
+    const currentPath = context?.currentPath || "";
+    
+    if (currentPath.includes("/crm/products")) {
+       const { data: products } = await supabase.from("products").select("name, sku, price, stock, category, description").limit(50);
+       enrichedContext.products = products;
+       enrichedContext.dataTitle = "Lista de Productos (Stock)";
+    } else if (currentPath.includes("/crm/customers")) {
+       const { data: customers } = await supabase.from("customers").select("id, full_name, company, email, city, status").limit(30);
+       enrichedContext.customers = customers;
+       enrichedContext.dataTitle = "Directorio de Clientes";
+    } else if (currentPath.includes("/crm/prospects")) {
+       const { data: prospects } = await supabase.from("prospects").select("id, full_name, company, status, source").limit(30);
+       enrichedContext.prospects = prospects;
+       enrichedContext.dataTitle = "Lista de Prospectos (Leads)";
+    }
+
     const result = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: [{ role: "user", parts: [{ text: message }] }],
       config: {
-        maxOutputTokens: 500,
-        temperature: 0.7,
-        systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
-          Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
-          Contexto actual del usuario: ${JSON.stringify(context)}.
-          Responde de forma profesional, amable y en español. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
+        maxOutputTokens: 800,
+        temperature: 0.2, // Lower temperature for more precision
+        systemInstruction: `Eres "RespiraBot", el asistente inteligente experto de RespiraCRM Colombia.
+          
+          TU MISIÓN: Ayudar al equipo con datos REALES del sistema.
+          
+          REGLAS DE ORO:
+          1. DATOS: Usa EXCLUSIVAMENTE el contexto abajo para responder. Si te preguntan por stock, busca la columna "stock" en la lista de productos. Si te preguntan cuántos hay, cuenta los elementos en el JSON.
+          2. PRECISIÓN: No inventes datos. Si un producto no está en la lista, di: "No encuentro ese producto en los primeros 50 registros del sistema".
+          3. ESTILO: Profesional, resolutivo y breve. No des introducciones largas si es una conversación en curso.
+          4. NAVEGACIÓN: Si el usuario pregunta por algo que no está en su módulo actual (ej. pregunta por clientes estando en productos), explícale que debe ir al módulo de Clientes para que tú puedas leer esa información.
+          
+          DATOS DEL SISTEMA (JSON):
+          ${JSON.stringify(enrichedContext)}`
       },
     });
 

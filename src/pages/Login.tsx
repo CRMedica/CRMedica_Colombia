@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { TrendingUp, Mail, Lock, Loader2, AlertCircle, User, CheckCircle } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
-import { supabase } from "../lib/supabase";
 
 interface LoginProps {
   onLogin: (token: string, user: any) => void;
@@ -102,22 +101,19 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
-  // ── OAUTH Redirect Logic ──
+  // ── OAUTH Popup Logic ──
   const handleOAuth = async (provider: string) => {
     setLoading(true);
     resetMessages();
     try {
-      if (!supabase) {
-        throw new Error("⚠️ Configuración incompleta. Debes añadir VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY en 'Settings > Secrets' y reiniciar el servidor.");
+      const res = await fetch(`/api/auth/oauth-url?provider=${provider}`);
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al obtener URL de autenticación");
+
+      const authWindow = window.open(data.url, "oauth_popup", "width=600,height=700");
+      if (!authWindow) {
+        throw new Error("El navegador bloqueó la ventana emergente. Por favor actívalas.");
       }
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: provider as any,
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`
-        }
-      });
-      if (error) throw error;
-      // The user is now redirected to Supabase/Provider
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -125,8 +121,24 @@ export default function Login({ onLogin }: LoginProps) {
   };
 
   useEffect(() => {
-    // We no longer need the postMessage listener as we are using redirects
-  }, []);
+    const handleMessage = (event: MessageEvent) => {
+      if (!event.origin.endsWith(".run.app") && !event.origin.includes("localhost")) return;
+
+      if (event.data?.type === "OAUTH_AUTH_SUCCESS") {
+        const { payload } = event.data;
+        if (payload.error) {
+          setError(payload.error);
+          setLoading(false);
+        } else if (payload.token) {
+          onLogin(payload.token, payload.user);
+          navigate("/dashboard");
+        }
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, [navigate, onLogin]);
 
   const titles: Record<Mode, { title: string; subtitle: string }> = {
     login:    { title: "Bienvenido de nuevo",  subtitle: "Accede al CRM de RespiraCRM Colombia" },

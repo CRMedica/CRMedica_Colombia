@@ -133,8 +133,98 @@ app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
 });
 
 // --- OAUTH ROUTES ---
-// We let the client handle /auth/callback to use Supabase client's session detection
-// but we keep oauth-exchange to sync user profile in our DB
+app.get("/api/auth/oauth-url", async (req, res) => {
+  const { provider } = req.query;
+  
+  // Use explicit env var or detect from host header
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+  const host = req.headers['x-forwarded-host'] || req.get('host');
+  const baseUrl = process.env.APP_URL || `${protocol}://${host}`;
+  const redirectUri = `${baseUrl}/auth/callback`;
+  
+  console.log("OAuth Redirect URI:", redirectUri);
+
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: provider as any,
+    options: {
+      redirectTo: redirectUri,
+      skipBrowserRedirect: true
+    }
+  });
+
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ url: data.url });
+});
+
+app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
+  const { code } = req.query;
+  
+  // Script to send message back to opener
+  const sendMessage = (data: any) => `
+    <html>
+      <body>
+        <script>
+          if (window.opener) {
+            window.opener.postMessage({ type: "OAUTH_AUTH_SUCCESS", payload: ${JSON.stringify(data)} }, "*");
+            window.close();
+          } else {
+            window.location.href = "/";
+          }
+        </script>
+        <p>Autenticando... Esta ventana se cerrará automáticamente.</p>
+      </body>
+    </html>
+  `;
+
+  if (code) {
+    try {
+      // Create a fresh client for the server exchange that uses the anon key or service role
+      // But we need to use the same logic as the initial request
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code as string);
+      if (error) throw error;
+
+      const { user } = data;
+      if (user) {
+        // Find or create in custom users table
+        let { data: dbUser, error: dbError } = await supabase
+          .from("users")
+          .select("*")
+          .eq("email", user.email)
+          .single();
+
+        if (!dbUser && (!dbError || dbError.code === "PGRST116")) {
+          const { data: newUser, error: createError } = await supabase
+            .from("users")
+            .insert([{ 
+              email: user.email, 
+              full_name: user.user_metadata?.full_name || user.email?.split('@')[0], 
+              role: "sales",
+              password_hash: "OAUTH_USER"
+            }])
+            .select()
+            .single();
+          if (createError) throw createError;
+          dbUser = newUser;
+        } else if (dbError && dbError.code !== "PGRST116") {
+          throw dbError;
+        }
+
+        const token = jwt.sign(
+          { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name },
+          JWT_SECRET,
+          { expiresIn: "10h" }
+        );
+
+        return res.send(sendMessage({ token, user: { id: dbUser.id, email: dbUser.email, role: dbUser.role, name: dbUser.full_name } }));
+      }
+    } catch (err: any) {
+      console.error("OAuth Exchange Error:", err);
+      return res.send(sendMessage({ error: err.message }));
+    }
+  }
+
+  res.send(sendMessage({ error: "No code provided" }));
+});
 
 // Exchange OAuth code/tokens for a custom JWT
 app.post("/api/auth/oauth-exchange", async (req, res) => {
@@ -273,19 +363,28 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   try {
     const result = await ai.models.generateContent({
       model: "gemini-1.5-flash",
-      contents: message,
-      config: {
+      contents: [{ role: "user", parts: [{ text: message }] }],
+      generationConfig: {
         maxOutputTokens: 500,
         temperature: 0.7,
-        systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
+      },
+      systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
         Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
         Contexto actual del usuario: ${JSON.stringify(context)}.
         Responde de forma profesional, amable y en español. Si te piden datos que no tienes, sugiere revisar los módulos correspondientes.`
-      }
     });
 
-    // Handle response structure for @google/genai SDK
-    const botResponse = result.text || "No pude generar una respuesta clara.";
+    // Handle different response formats based on SDK version
+    let botResponse = "";
+    if (typeof result.response?.text === 'function') {
+      botResponse = result.response.text();
+    } else if (typeof result.response?.text === 'string') {
+      botResponse = result.response.text;
+    } else if (result.text) {
+      botResponse = result.text;
+    } else {
+      botResponse = "No pude generar una respuesta clara.";
+    }
 
     res.json({ response: botResponse });
   } catch (err: any) {

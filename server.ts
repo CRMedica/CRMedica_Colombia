@@ -85,7 +85,15 @@ app.post("/api/auth/login", async (req, res) => {
       { expiresIn: "10h" }
     );
 
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.full_name } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        name: user.full_name 
+      } 
+    });
   } catch (err) {
     res.status(500).json({ error: "Server error" });
   }
@@ -267,19 +275,44 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
         if (!dbUser) {
           const { data: newUser } = await supabase.from("users").insert([{
             email: user.email,
-            full_name: user.user_metadata.full_name || user.email?.split('@')[0],
-            role: 'vendedor',
+            full_name: user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0],
+            role: 'sales',
             status: 'activo'
           }]).select().single();
           dbUser = newUser;
+        } else {
+          // Update existing user with fresh metadata if it was a placeholder or empty
+          const googleName = user.user_metadata.full_name || user.user_metadata.name;
+          if (googleName && (!dbUser.full_name || dbUser.full_name === 'Usuario')) {
+            const { data: updatedUser } = await supabase
+              .from("users")
+              .update({ full_name: googleName })
+              .eq("id", dbUser.id)
+              .select()
+              .single();
+            if (updatedUser) dbUser = updatedUser;
+          }
         }
 
         const token = jwt.sign(
-          { id: dbUser?.id || user.id, email: user.email, role: dbUser?.role || 'vendedor' },
+          { 
+            id: dbUser?.id || user.id, 
+            email: user.email, 
+            role: dbUser?.role || 'sales',
+            name: dbUser?.full_name || user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0]
+          },
           JWT_SECRET,
           { expiresIn: "7d" }
         );
-        return res.send(sendMessage({ token, user: dbUser || user }));
+        
+        const responseUser = {
+          id: dbUser?.id || user.id,
+          email: user.email,
+          role: dbUser?.role || 'sales',
+          name: dbUser?.full_name || user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0]
+        };
+
+        return res.send(sendMessage({ token, user: responseUser }));
       }
     } catch (err: any) {
       console.error("Auth Exchange Error:", err);
@@ -305,21 +338,45 @@ app.post("/api/auth/verify-token", async (req, res) => {
     if (!dbUser) {
       const { data: newUser, error: createError } = await supabase.from("users").insert([{
         email: user.email,
-        full_name: user.user_metadata.full_name || user.email?.split('@')[0],
-        role: 'vendedor',
+        full_name: user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0],
+        role: 'sales',
         status: 'activo'
       }]).select().single();
       if (createError) throw createError;
       dbUser = newUser;
+    } else {
+      // Update existing user with Google metadata if current is generic
+      const googleName = user.user_metadata.full_name || user.user_metadata.name;
+      if (googleName && (!dbUser.full_name || dbUser.full_name === 'Usuario')) {
+        const { data: updatedUser } = await supabase
+          .from("users")
+          .update({ full_name: googleName })
+          .eq("id", dbUser.id)
+          .select()
+          .single();
+        if (updatedUser) dbUser = updatedUser;
+      }
     }
 
     const token = jwt.sign(
-      { id: dbUser?.id || user.id, email: user.email, role: dbUser?.role || 'vendedor' },
+      { 
+        id: dbUser?.id || user.id, 
+        email: user.email, 
+        role: dbUser?.role || 'sales',
+        name: dbUser?.full_name || user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0]
+      },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
     
-    res.json({ token, user: dbUser || user });
+    const responseUser = {
+      id: dbUser?.id || user.id,
+      email: user.email,
+      role: dbUser?.role || 'sales',
+      name: dbUser?.full_name || user.user_metadata.full_name || user.user_metadata.name || user.email?.split('@')[0]
+    };
+    
+    res.json({ token, user: responseUser });
   } catch (err: any) {
     console.error("Verify Token Error:", err);
     res.status(401).json({ error: err.message });
@@ -366,7 +423,15 @@ app.post("/api/auth/oauth-exchange", async (req, res) => {
       { expiresIn: "10h" }
     );
 
-    res.json({ token, user: { id: user.id, email: user.email, role: user.role, name: user.full_name } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        role: user.role, 
+        name: user.full_name 
+      } 
+    });
   } catch (err) {
     res.status(500).json({ error: "Server error during exchange" });
   }

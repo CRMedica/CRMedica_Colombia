@@ -64,17 +64,25 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
         
-        <Route element={<Layout user={user} onLogout={handleLogout}><Routes>
-          <Route path="/dashboard" element={user ? <Dashboard user={user} /> : <Navigate to="/login" />} />
-          <Route path="/crm/prospects" element={<Placeholder name="Gestión de Prospectos" />} />
-          <Route path="/crm/customers" element={<Placeholder name="Directorio de Clientes" />} />
-          <Route path="/crm/products" element={<Products />} />
-          <Route path="/crm/quotes" element={<Placeholder name="Cotizaciones y Presupuestos" />} />
-          <Route path="/crm/sales" element={<Placeholder name="Ventas y Pagos" />} />
-          <Route path="/crm/technical" element={<Placeholder name="Órdenes de Servicio Técnico" />} />
-          <Route path="/admin/users" element={<Placeholder name="Administración de Usuarios" />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
-        </Routes></Layout>} path="/*" />
+        <Route path="/*" element={
+          user ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <Routes>
+                <Route path="dashboard" element={<Dashboard user={user} />} />
+                <Route path="crm/prospects" element={<Placeholder name="Gestión de Prospectos" />} />
+                <Route path="crm/customers" element={<Placeholder name="Directorio de Clientes" />} />
+                <Route path="crm/products" element={<Products />} />
+                <Route path="crm/quotes" element={<Placeholder name="Cotizaciones y Presupuestos" />} />
+                <Route path="crm/sales" element={<Placeholder name="Ventas y Pagos" />} />
+                <Route path="crm/technical" element={<Placeholder name="Órdenes de Servicio Técnico" />} />
+                <Route path="admin/users" element={<Placeholder name="Administración de Usuarios" />} />
+                <Route path="*" element={<Navigate to="/dashboard" />} />
+              </Routes>
+            </Layout>
+          ) : (
+            <Navigate to="/login" />
+          )
+        } />
       </Routes>
     </BrowserRouter>
   );

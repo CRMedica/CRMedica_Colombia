@@ -94,8 +94,11 @@ export default function Products() {
     e.preventDefault();
     setIsSaving(true);
     try {
+      // Omit read-only fields for update
+      const { id, created_at, ...updateData } = formData as any;
+      
       if (editingId) {
-        await api.put(`/products/${editingId}`, formData);
+        await api.put(`/products/${editingId}`, updateData);
       } else {
         await api.post("/products", formData);
       }
@@ -260,7 +263,14 @@ export default function Products() {
                  <tr key={product.id} className="hover:bg-slate-50/50 transition-colors">
                    <td className="px-6 py-4 flex items-center gap-3">
                      <div className="w-10 h-10 rounded-lg overflow-hidden bg-slate-100 shrink-0">
-                       <img src={product.image_url} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                       <img 
+                          src={product.image_url} 
+                          className="w-full h-full object-cover" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                          }}
+                        />
                      </div>
                      <span className="font-bold text-slate-800 text-sm">{product.name}</span>
                    </td>

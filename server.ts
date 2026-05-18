@@ -316,11 +316,13 @@ tables.forEach((table) => {
 // --- AI BOT ROUTES ---
 app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   const { message, context } = req.body;
+  if (!message) return res.status(400).json({ error: "Mensaje vacío" });
+  
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: message,
-      config: {
+      model: "gemini-1.5-flash",
+      contents: [{ role: "user", parts: [{ text: message }] }],
+      generationConfig: {
         systemInstruction: `Eres "RespiraBot", el asistente inteligente del CRM de RespiraCRM Colombia. 
         Tu objetivo es ayudar a los empleados (vendedores, técnicos, gerentes) a consultar información, stock, y procesos.
         Contexto actual del usuario: ${JSON.stringify(context)}.
@@ -329,9 +331,9 @@ app.post("/api/ai/chat", authenticateToken, async (req, res) => {
     });
 
     res.json({ response: response.text });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error en el asistente AI" });
+  } catch (err: any) {
+    console.error("AI Chat Error:", err);
+    res.status(500).json({ error: "Error en el asistente AI: " + (err.message || 'Error desconocido') });
   }
 });
 

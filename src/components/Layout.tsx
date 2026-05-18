@@ -32,8 +32,53 @@ interface LayoutProps {
 export default function Layout({ children, user, onLogout }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiOverlayOpen, setIsAiOverlayOpen] = useState(false);
+  const [messages, setMessages] = useState<{ role: 'bot' | 'user', text: string }[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user && messages.length === 0) {
+      setMessages([{ role: 'bot', text: `Hola ${user.name}, ¿en qué puedo ayudarte hoy? Puedo buscar stock, verificar estados de pedidos o darte un resumen de tus clientes.` }]);
+    }
+  }, [user]);
+
+  const handleSendMessage = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!inputValue.trim() || isTyping) return;
+
+    const userMsg = inputValue.trim();
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setInputValue("");
+    setIsTyping(true);
+
+    try {
+      const response = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        },
+        body: JSON.stringify({ 
+          message: userMsg,
+          context: { 
+            currentPath: location.pathname,
+            userRole: user?.role
+          }
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      
+      setMessages(prev => [...prev, { role: 'bot', text: data.response }]);
+    } catch (err) {
+      console.error(err);
+      setMessages(prev => [...prev, { role: 'bot', text: "Lo siento, tuve un error al procesar tu solicitud. Por favor intenta de nuevo." }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
   const menuItems = [
     { name: "Dashboard", path: "/dashboard", icon: LayoutDashboard, roles: ["admin", "manager", "sales", "tech", "client"] },
@@ -174,22 +219,43 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="bg-slate-100 p-4 rounded-xl rounded-tl-none mr-12 text-sm text-slate-700">
-                Hola {user?.name}, ¿en qué puedo ayudarte hoy? Puedo buscar stock, verificar estados de pedidos o darte un resumen de tus clientes.
-              </div>
+              {messages.map((msg, idx) => (
+                <div 
+                  key={idx} 
+                  className={`max-w-[85%] p-4 rounded-2xl text-sm ${
+                    msg.role === 'bot' 
+                      ? "bg-slate-100 text-slate-700 rounded-tl-none mr-auto" 
+                      : "bg-indigo-600 text-white rounded-tr-none ml-auto"
+                  }`}
+                >
+                  {msg.text}
+                </div>
+              ))}
+              {isTyping && (
+                <div className="bg-slate-100 p-4 rounded-xl rounded-tl-none mr-auto text-sm text-slate-500 italic max-w-[80%]">
+                  RespiraBot está pensando...
+                </div>
+              )}
             </div>
-
+ 
             <div className="p-6 border-t border-slate-100">
-              <div className="relative">
+              <form onSubmit={handleSendMessage} className="relative">
                 <input 
                   type="text" 
-                  placeholder="Escribe tu consulta..." 
-                  className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+                  value={inputValue}
+                  disabled={isTyping}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  placeholder={isTyping ? "RespiraBot está procesando..." : "Escribe tu consulta..."}
+                  className="w-full pl-4 pr-12 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-hidden focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                 />
-                <button className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                <button 
+                  type="submit"
+                  disabled={isTyping}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                >
                   <ChevronRight size={20} />
                 </button>
-              </div>
+              </form>
             </div>
           </motion.div>
         )}

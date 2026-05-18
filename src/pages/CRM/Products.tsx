@@ -94,19 +94,31 @@ export default function Products() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Omit read-only fields for update
-      const { id, created_at, ...updateData } = formData as any;
+      // Create a clean object for the API
+      const payload = {
+        sku: formData.sku,
+        name: formData.name,
+        category: formData.category,
+        brand: formData.brand,
+        description: formData.description,
+        price: Number(formData.price),
+        tax_rate: Number(formData.tax_rate),
+        stock: Number(formData.stock),
+        provider: formData.provider,
+        warranty: formData.warranty,
+        image_url: formData.image_url
+      };
       
       if (editingId) {
-        await api.put(`/products/${editingId}`, updateData);
+        await api.put(`/products/${editingId}`, payload);
       } else {
-        await api.post("/products", formData);
+        await api.post("/products", payload);
       }
       await fetchProducts();
       setIsModalOpen(false);
     } catch (err) {
-      console.error(err);
-      alert("Error al guardar el producto");
+      console.error("Save Error:", err);
+      alert("Error al guardar el producto. Por favor verifica los datos.");
     } finally {
       setIsSaving(false);
     }
@@ -479,15 +491,29 @@ export default function Products() {
 
                     <div className="space-y-2">
                        <label className="text-sm font-bold text-slate-700 ml-1">URL de Imagen</label>
-                       <input 
-                         type="url" 
-                         value={formData.image_url}
-                         onChange={(e) => setFormData({...formData, image_url: e.target.value})}
-                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden text-xs text-blue-600"
-                       />
-                       <div className="flex items-center gap-2 mt-2 p-3 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
-                         <Info size={14} />
-                         Puedes usar una URL de Unsplash para pruebas visuales.
+                       <div className="flex gap-4 items-start">
+                         <div className="w-20 h-20 rounded-xl bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200">
+                           <img 
+                             src={formData.image_url} 
+                             className="w-full h-full object-cover"
+                             onError={(e) => {
+                               (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400";
+                             }}
+                           />
+                         </div>
+                         <div className="flex-1">
+                           <input 
+                             type="url" 
+                             value={formData.image_url}
+                             onChange={(e) => setFormData({...formData, image_url: e.target.value})}
+                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all outline-hidden text-xs text-blue-600 mb-2"
+                             placeholder="https://..."
+                           />
+                           <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-lg text-[10px] text-blue-600 font-medium">
+                             <Info size={14} />
+                             Pega una URL válida. Se mostrará el producto en el catálogo.
+                           </div>
+                         </div>
                        </div>
                     </div>
                   </div>

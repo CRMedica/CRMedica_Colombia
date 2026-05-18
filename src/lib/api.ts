@@ -8,7 +8,10 @@ export const api = {
         'Authorization': `Bearer ${token}`
       }
     });
-    if (!res.ok) throw new Error('API Error');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'API Error');
+    }
     return res.json();
   },
   post: async (endpoint: string, data: any) => {
@@ -37,7 +40,10 @@ export const api = {
       },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('API Error');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'API Error');
+    }
     return res.json();
   },
   delete: async (endpoint: string) => {
@@ -48,7 +54,10 @@ export const api = {
         'Authorization': `Bearer ${token}`
       }
     });
-    if (!res.ok) throw new Error('API Error');
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || 'API Error');
+    }
     return res.json();
   }
 };

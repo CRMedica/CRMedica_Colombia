@@ -136,6 +136,51 @@ app.post("/api/auth/forgot-password", async (req, res) => {
   }
 });
 
+// ── CONFIRMAR RESTABLECIMIENTO DE CONTRASEÑA ──
+app.post("/api/auth/reset-password", async (req, res) => {
+  const { password, access_token } = req.body;
+  if (!password || !access_token) {
+    return res.status(400).json({ error: "Contraseña o token faltante" });
+  }
+
+  try {
+    // Verificar el access token de Supabase para obtener el email del usuario de forma segura
+    const { data, error: authError } = await supabase.auth.getUser(access_token);
+    if (authError || !data.user) {
+      console.error("Error al verificar token con Supabase:", authError);
+      return res.status(401).json({ error: "El token de restablecimiento es inválido, ha expirado o ya fue utilizado." });
+    }
+
+    const email = data.user.email;
+    if (!email) {
+      return res.status(400).json({ error: "No se pudo recuperar el correo asociado al token" });
+    }
+
+    // Generar nuevo hash de contraseña con bcrypt
+    const salt = await bcrypt.genSalt(10);
+    const password_hash = await bcrypt.hash(password, salt);
+
+    // Actualizar en nuestra tabla de usuarios personalizada
+    const { error: dbError } = await supabase
+      .from("users")
+      .update({ password_hash })
+      .eq("email", email);
+
+    if (dbError) {
+      console.error("Error al actualizar la tabla de usuarios:", dbError);
+      return res.status(500).json({ error: "Error en base de datos al guardar la nueva contraseña" });
+    }
+
+    // Sincronizar también su contraseña en el Auth de Supabase (opcional pero mantiene todo consistente)
+    await supabase.auth.updateUser({ password });
+
+    res.json({ success: true, message: "Contraseña restablecida con éxito." });
+  } catch (err) {
+    console.error("Server Reset Password Error:", err);
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+});
+
 app.get("/api/auth/me", authenticateToken, async (req: any, res) => {
   res.json(req.user);
 });

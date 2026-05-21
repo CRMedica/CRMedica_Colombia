@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Landing from './pages/Landing';
 import Cobertura from './pages/Cobertura';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/CRM/Products';
 import Prospects from './pages/CRM/Prospects';
@@ -62,6 +63,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/cobertura" element={<Cobertura />} />
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         
         <Route path="/*" element={
           user ? (

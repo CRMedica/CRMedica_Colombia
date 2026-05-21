@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { TrendingUp, Mail, Lock, Loader2, AlertCircle, User, CheckCircle } from "lucide-react";
+import { TrendingUp, Mail, Lock, Loader2, AlertCircle, User, CheckCircle, ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 
 interface LoginProps {
@@ -165,6 +165,16 @@ export default function Login({ onLogin }: LoginProps) {
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden"
       >
+        {/* Botón de regreso */}
+        <div className="px-8 pt-6">
+          <Link 
+            to="/" 
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-blue-600 transition-colors px-3 py-1.5 bg-slate-50 hover:bg-blue-50 rounded-lg"
+          >
+            <ArrowLeft size={14} /> Volver al Inicio
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="p-8 pb-0 text-center">
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white mx-auto mb-4">
@@ -261,22 +271,14 @@ export default function Login({ onLogin }: LoginProps) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-3">
                     <button
                       type="button" 
                       onClick={() => handleOAuth("google")}
                       disabled={loading}
-                      className="flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
+                      className="w-full flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
                     >
-                      <img src="https://www.google.com/favicon.ico" className="w-4 h-4" /> Google
-                    </button>
-                    <button
-                      type="button" 
-                      onClick={() => handleOAuth("azure")}
-                      disabled={loading}
-                      className="flex items-center justify-center gap-2 py-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors text-sm font-medium disabled:opacity-50"
-                    >
-                      <img src="https://www.microsoft.com/favicon.ico" className="w-4 h-4" /> Microsoft
+                      <img src="https://www.google.com/favicon.ico" className="w-4 h-4" /> Registrarse o iniciar sesión con Google
                     </button>
                   </div>
                 </div>

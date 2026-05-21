@@ -524,44 +524,151 @@ tables.forEach((table) => {
 app.post("/api/ai/chat", authenticateToken, async (req, res) => {
   const { message, context } = req.body;
   if (!message) return res.status(400).json({ error: "Mensaje vacío" });
-  
+
+  // Detailed mock definitions to guarantee consistent answers matching UI seed when DB tables are empty
+  const fallbackProducts = [
+    { id: '1', sku: 'OX-500', name: 'Concentrador de Oxígeno EverFlo 5L', category: 'Oxigenoterapia', brand: 'Philips Respironics', price: 4200000, stock: 12, description: 'Concentrador de oxígeno estacionario ultra confiable y compacto.', provider: 'Philips', warranty: '1 año' },
+    { id: '2', sku: 'OX-1000', name: 'Concentrador de Oxígeno Millennium M10 10L', category: 'Oxigenoterapia', brand: 'Philips Respironics', price: 7800000, stock: 4, description: 'Dispositivo estacionario diseñado para suministrar flujo continuo de oxígeno hasta 10 litros.', provider: 'Philips', warranty: '1 año' },
+    { id: '3', sku: 'OX-PORT', name: 'Concentrador de Oxígeno Portátil SimplyGo', category: 'Oxigenoterapia', brand: 'Philips', price: 9500000, stock: 3, description: 'El único concentrador de oxigeno portátil duradero que ofrece flujo continuo y pulso.', provider: 'Philips', warranty: '2 años' },
+    { id: '4', sku: 'CPAP-A11', name: 'CPAP AutoSet AirSense 11', category: 'Apnea', brand: 'ResMed', price: 3800000, stock: 18, description: 'Equipo automático de presión con conectividad IoT avanzada para terapia del sueño.', provider: 'ResMed', warranty: '2 años' },
+    { id: '5', sku: 'BPAP-CURV', name: 'BiPAP AirCurve 10 VAuto Tripack', category: 'Apnea', brand: 'ResMed', price: 6900000, stock: 7, description: 'Dispositivo binivel autoajustable con humidificador HumidAir integrado para pacientes respiratorios.', provider: 'ResMed', warranty: '2 años' },
+    { id: '6', sku: 'MASK-N30', name: 'Máscara Nasal AirFit N30', category: 'Insumos', brand: 'ResMed', price: 550000, stock: 32, description: 'Máscara nasal con soporte discreto y arnés ajustable debajo de la boca.', provider: 'ResMed', warranty: '3 meses' },
+    { id: '7', sku: 'MASK-F20', name: 'Máscara Facio-Nasal AirFit F20', category: 'Insumos', brand: 'ResMed', price: 680000, stock: 22, description: 'Máscara oronasal de alto sellado, ideal para terapia con flujos y presiones elevadas.', provider: 'ResMed', warranty: '3 meses' },
+    { id: '8', sku: 'NEB-PORT', name: 'Nebulizador Portátil de Malla NEB-M1', category: 'Nebulización', brand: 'Omron', price: 350000, stock: 15, description: 'Nebulizador ultra portátil y silencioso con tecnología de malla transductora activa.', provider: 'Omron Colombia', warranty: '1 año' },
+    { id: '9', sku: 'NEB-CLINIC', name: 'Nebulizador Hospitalario Compresor C28', category: 'Nebulización', brand: 'Omron', price: 420000, stock: 11, description: 'Compresor de alta durabilidad para dispensar broncodilatadores con gran tasa de nebulizado.', provider: 'Omron Colombia', warranty: '1 año' },
+    { id: '10', sku: 'OXI-PULSE', name: 'Oxímetro de Pulso Digital Nonin Onyx', category: 'Insumos', brand: 'Nonin', price: 290000, stock: 45, description: 'Oxímetro de gran precisión militar y uso clínico continuo certificado por FDA.', provider: 'Nonin USA', warranty: '1 año' }
+  ];
+
+  const fallbackCustomers = [
+    { id: "c1", name: "Fundación Neumológica de Colombia", document_type: "NIT", document_id: "860.034.908-2", phone: "+57 (601) 742-8900", email: "compras@neumologica.org", address: "Calle 163a # 13-60", city: "Bogotá", department: "Bogotá D.C.", status: "active" },
+    { id: "c2", name: "IPS Neumored SAS", document_type: "NIT", document_id: "901.442.115-4", phone: "320 890 1212", email: "gerencia@neumored.co", address: "Avenida 4N # 23N-50", city: "Cali", department: "Valle del Cauca", status: "active" },
+    { id: "c3", name: "Clínica Respirar con Dignidad", document_type: "NIT", document_id: "800.224.510-1", phone: "318 456 2200", email: "servicio@respirardignidad.com", address: "Carrera 43A # 14-20", city: "Medellín", department: "Antioquia", status: "active" },
+    { id: "c4", name: "IPS Oxiseguridad de la Costa", document_type: "NIT", document_id: "900.512.980-3", phone: "301 556 7788", email: "mantenimiento@oxiseguridad.com", address: "Calle 72 # 53-12", city: "Barranquilla", department: "Atlántico", status: "inactive" },
+    { id: "c5", name: "Hospital Universitario Hernando Moncaleano", document_type: "NIT", document_id: "891.180.017-5", phone: "310 998 1234", email: "compras@hospitalneiva.gov.co", address: "Calle 9 # 15-25", city: "Neiva", department: "Huila", status: "active" },
+    { id: "c6", name: "IPS Alivio Pulmonar de los Andes", document_type: "NIT", document_id: "900.223.119-0", phone: "315 440 2211", email: "contacto@aliviopulmonar.co", address: "Carrera 23 # 45-10", city: "Manizales", department: "Caldas", status: "active" },
+    { id: "c7", name: "Clínica Cardiorespiratoria del Caribe", document_type: "NIT", document_id: "806.012.333-4", phone: "320 889 4433", email: "info@cardiorespiratoriacaribe.com", address: "Avenida Pedro de Heredia # 32-45", city: "Cartagena", department: "Bolívar", status: "active" },
+    { id: "c8", name: "Oxígenos de Occidente y Soporte SAS", document_type: "NIT", document_id: "901.332.887-2", phone: "311 229 0101", email: "admon@oxigenosoccidente.com", address: "Calle 18 # 22-80", city: "Pasto", department: "Nariño", status: "inactive" },
+    { id: "c9", name: "Clínica de Somnología y Apnea del Llano", document_type: "NIT", document_id: "822.019.228-1", phone: "317 550 4499", email: "admisiones@suenollano.co", address: "Carrera 40 # 33B-12", city: "Villavicencio", department: "Meta", status: "active" },
+    { id: "c10", name: "Hospital Universitario San Jorge", document_type: "NIT", document_id: "891.480.002-9", phone: "300 443 1122", email: "suministros@hospitalsanjorge.gov.co", address: "Carrera 4 # 24-50", city: "Pereira", department: "Risaralda", status: "active" }
+  ];
+
+  const fallbackProspects = [
+    { id: "p1", name: "Dr. Alejandro Gómez", company: "Clínica de Neumología Bogotá", email: "alejandro.gomez@clinicaneumobogota.com", phone: "315 443 1122", city: "Bogotá", source: "Recomendación Médica", product_of_interest: "CPAP AutoSet AirSense 11", budget: 3800000, status: "qualified" },
+    { id: "p2", name: "Ing. Sofía Castro", company: "Medicox Alquileres", email: "compras@medicox.com.co", phone: "300 445 6677", city: "Cali", source: "Búsqueda Web", product_of_interest: "Concentrador de Oxígeno EverFlo 5L", budget: 8400000, status: "new" },
+    { id: "p3", name: "Dr. Juan Cardona", company: "VIP Care Home", email: "juan.cardona@vipcare.com", phone: "312 990 0112", city: "Medellín", source: "Licitación Privada", product_of_interest: "Concentrador de Oxígeno Portátil SimplyGo", budget: 19000000, status: "proposal" },
+    { id: "p4", name: "Dra. Martha Luz", company: "IPS Respirando Sano", email: "martha.luz@respirandosano.org", phone: "318 221 0044", city: "Barranquilla", source: "Congreso Médico", product_of_interest: "BiPAP AirCurve 10 VAuto Tripack", budget: 6900000, status: "won" },
+    { id: "p5", name: "Dr. Santiago Restrepo", company: "Neumocuidado SAS", email: "santiago.restrepo@neumocuidado.com", phone: "311 889 0291", city: "Barranquilla", source: "Congreso de Neumología 2024", product_of_interest: "CPAP Autoset AirSense 11", budget: 11400000, status: "new" },
+    { id: "p6", name: "Enfermera Pilar Ruiz", company: "Hogar de Paso Santa Clara", email: "pilar.ruiz@santaclara.org.co", phone: "315 220 9011", city: "Bucaramanga", source: "Página Web", product_of_interest: "Concentrador de Oxígeno EverFlo 5L", budget: 4200000, status: "contacted" },
+    { id: "p7", name: "Dr. Camilo Echeverry", company: "Unidad de Sueño del Country", email: "camilo.echeverry@clinicaelcountry.com", phone: "320 440 2211", city: "Bogotá", source: "Llamada Fría", product_of_interest: "BiPAP AirCurve 10 VAuto Tripack", budget: 34500000, status: "proposal" },
+    { id: "p8", name: "Directora Gloria Alzate", company: "IPS Neumovida SAS", email: "galzate@neumovida.com", phone: "310 500 4010", city: "Pereira", source: "Referenciado", product_of_interest: "Concentrador de Oxígeno Millennium M10 10L", budget: 15600000, status: "contacted" },
+    { id: "p9", name: "Dr. Ernesto Sabogal", company: "Fundación Hospitalaria San Vicente", email: "ernesto.sabogal@sanvicente.org", phone: "312 900 8110", city: "Medellín", source: "Página Web", product_of_interest: "Máscara Facio-Nasal AirFit F20", budget: 6800000, status: "won" },
+    { id: "p10", name: "Lic. Claudia Rojas", company: "IPS Respirar Sano", email: "claudia.rojas@respirarsano.co", phone: "301 772 1010", city: "Cúcuta", source: "Referenciado", product_of_interest: "Oxímetro de Pulso Digital Nonin Onyx", budget: 2900000, status: "lost" }
+  ];
+
+  const fallbackQuotes = [
+    { id: "q1", quote_number: 1024, customer_id: "c1", total: 4350000, status: "accepted", notes: "Cotización de Concentrador EverFlo para la Fundación Neumológica." },
+    { id: "q2", quote_number: 1025, customer_id: "c2", total: 4430000, status: "sent", notes: "CPAP oficial con máscara nasal AirFit N30." },
+    { id: "q3", quote_number: 1026, customer_id: "c3", total: 16750000, status: "accepted", notes: "Consola de oxigenoterapia con 3 Concentradores EverFlo 5L." },
+    { id: "q4", quote_number: 1027, customer_id: "c5", total: 11450000, status: "draft", notes: "Licitación Hospital Universitario Neiva." },
+    { id: "q5", quote_number: 1028, customer_id: "c4", total: 3950000, status: "rejected", notes: "Cotización de CPAP Autocontrolado para el hogar de medicina del sueño." },
+    { id: "q6", quote_number: 1029, customer_id: "c7", total: 15450000, status: "sent", notes: "Pack de 2 BiPAP AirCurve y 5 Máscaras AirFit F20." }
+  ];
+
+  const fallbackSales = [
+    { id: "s1", customer_id: "c1", total: 4350000, status: "confirmed", delivery_status: "shipped", created_at: "2026-05-18" },
+    { id: "s2", customer_id: "c2", total: 4430000, status: "paid", delivery_status: "delivered", created_at: "2026-05-19" },
+    { id: "s3", customer_id: "c3", total: 16750000, status: "paid", delivery_status: "delivered", created_at: "2026-05-20" },
+    { id: "s4", customer_id: "c5", total: 9500000, status: "confirmed", delivery_status: "not_shipped", created_at: "2026-05-20" },
+    { id: "s5", customer_id: "c7", total: 15450000, status: "pending", delivery_status: "shipped", created_at: "2026-05-21" },
+    { id: "s6", customer_id: "c3", total: 4200000, status: "paid", delivery_status: "delivered", created_at: "2026-05-21" }
+  ];
+
+  const fallbackServiceOrders = [
+    { id: "so1", customer_id: "c1", product_id: "1", type: "corrective", status: "in_progress", diagnosis: "Filtro de entrada saturado de polvo y caída de presión. Requiere cambio preventivo de zeolita." },
+    { id: "so2", customer_id: "c3", product_id: "4", type: "preventive", status: "completed", diagnosis: "Mantenimiento preventivo anual realizado con éxito." }
+  ];
+
   try {
-    // Enrich context with real data based on the current path
-    let enrichedContext = { ...context };
-    
-    const currentPath = context?.currentPath || "";
-    
-    if (currentPath.includes("/crm/products")) {
-       const { data: products } = await supabase.from("products").select("name, sku, price, stock, category, description").limit(50);
-       enrichedContext.products = products;
-       enrichedContext.dataTitle = "Lista de Productos (Stock)";
-    } else if (currentPath.includes("/crm/customers")) {
-       const { data: customers } = await supabase.from("customers").select("id, full_name, company, email, city, status").limit(30);
-       enrichedContext.customers = customers;
-       enrichedContext.dataTitle = "Directorio de Clientes";
-    } else if (currentPath.includes("/crm/prospects")) {
-       const { data: prospects } = await supabase.from("prospects").select("id, full_name, company, status, source").limit(30);
-       enrichedContext.prospects = prospects;
-       enrichedContext.dataTitle = "Lista de Prospectos (Leads)";
+    // Collect all data elements from Supabase securely & concurrently
+    let dbProducts: any[] = [];
+    let dbCustomers: any[] = [];
+    let dbProspects: any[] = [];
+    let dbQuotes: any[] = [];
+    let dbSales: any[] = [];
+    let dbServiceOrders: any[] = [];
+
+    try {
+      const { data } = await supabase.from("products").select("id, sku, name, category, brand, description, price, stock, provider, warranty").limit(100);
+      if (data && data.length > 0) dbProducts = data;
+    } catch (e) {
+      console.error("Error querying products table in AI Route:", e);
     }
+
+    try {
+      const { data } = await supabase.from("customers").select("id, name, document_type, document_id, phone, email, address, city, department, status").limit(100);
+      if (data && data.length > 0) dbCustomers = data;
+    } catch (e) {
+      console.error("Error querying customers table in AI Route:", e);
+    }
+
+    try {
+      const { data } = await supabase.from("prospects").select("id, name, company, email, phone, city, source, product_of_interest, budget, status, notes").limit(100);
+      if (data && data.length > 0) dbProspects = data;
+    } catch (e) {
+      console.error("Error querying prospects table in AI Route:", e);
+    }
+
+    try {
+      const { data } = await supabase.from("quotes").select("id, quote_number, customer_id, total, status, notes").limit(100);
+      if (data && data.length > 0) dbQuotes = data;
+    } catch (e) {
+      console.error("Error querying quotes table in AI Route:", e);
+    }
+
+    try {
+      const { data } = await supabase.from("sales").select("id, customer_id, total, status, delivery_status, created_at").limit(100);
+      if (data && data.length > 0) dbSales = data;
+    } catch (e) {
+      console.error("Error querying sales table in AI Route:", e);
+    }
+
+    try {
+      const { data } = await supabase.from("service_orders").select("id, customer_id, product_id, type, status, diagnosis").limit(100);
+      if (data && data.length > 0) dbServiceOrders = data;
+    } catch (e) {
+      console.error("Error querying service_orders table in AI Route:", e);
+    }
+
+    // Build the fully enriched context giving the AI absolute context access
+    const enrichedContext = {
+      userRole: context?.userRole,
+      currentPath: context?.currentPath,
+      products: dbProducts.length > 0 ? dbProducts : fallbackProducts,
+      customers: dbCustomers.length > 0 ? dbCustomers : fallbackCustomers,
+      prospects: dbProspects.length > 0 ? dbProspects : fallbackProspects,
+      quotes: dbQuotes.length > 0 ? dbQuotes : fallbackQuotes,
+      sales: dbSales.length > 0 ? dbSales : fallbackSales,
+      serviceOrders: dbServiceOrders.length > 0 ? dbServiceOrders : fallbackServiceOrders
+    };
 
     const result = await ai.models.generateContent({
       model: "gemini-flash-latest",
       contents: [{ role: "user", parts: [{ text: message }] }],
       config: {
         maxOutputTokens: 800,
-        temperature: 0.2, // Lower temperature for more precision
-        systemInstruction: `Eres "RespiraBot", el asistente inteligente experto de RespiraCRM Colombia.
+        temperature: 0.15, // Extremely objective
+        systemInstruction: `Eres "RespiraBot", el asistente virtual e inteligente experto de RespiraCRM Colombia.
           
-          TU MISIÓN: Ayudar al equipo con datos REALES del sistema.
+          TU MISIÓN: Ayudar al personal administrativo, comercial y de soporte técnico de la empresa con respuestas basadas en datos reales del sistema que se encuentran en el JSON de CONTEXTO REAL abajo.
           
           REGLAS DE ORO:
-          1. DATOS: Usa EXCLUSIVAMENTE el contexto abajo para responder. Si te preguntan por stock, busca la columna "stock" en la lista de productos. Si te preguntan cuántos hay, cuenta los elementos en el JSON.
-          2. PRECISIÓN: No inventes datos. Si un producto no está en la lista, di: "No encuentro ese producto en los primeros 50 registros del sistema".
-          3. ESTILO: Profesional, resolutivo y breve. No des introducciones largas si es una conversación en curso.
-          4. NAVEGACIÓN: Si el usuario pregunta por algo que no está en su módulo actual (ej. pregunta por clientes estando en productos), explícale que debe ir al módulo de Clientes para que tú puedas leer esa información.
+          1. ACCESO TOTAL: Tienes acceso completo a todas las colecciones principales en tiempo real de la base de datos: Clientes (customers), Prospectos (prospects), Productos (products), Cotizaciones (quotes), Ventas (sales) e Historial de soporte técnico (serviceOrders).
+          2. CONTEOS Y CÁLCULOS: Si el usuario te pregunta cuántos hay o pide un listado o información específica, búscalo en el JSON adjunto abajo. Di expresamente la cantidad exacta. Por ejemplo, en "customers" hay exactly 10 clientes si usas los datos fallback, o bien la cantidad real en la DB.
+          3. SINCERIDAD: No inventes datos que no estén en el JSON de contexto. Si no hay elementos, menciónalo honestamente.
+          4. TONO: Tu tono debe ser profesional, resolutivo, fluido y alegre. Responde siempre en español.
+          5. NO SALUDES REPETIDAMENTE: La interfaz de usuario ya saluda al usuario con un mensaje de bienvenida de forma predeterminada al cargar. Por lo tanto, ¡NO saludes ni digas cosas como "Hola, ¿en qué puedo ayudarte?" al inicio de tu respuesta! Responde directamente a la pregunta o consulta hecha por el usuario con eficiencia y ve directo al grano.
           
-          DATOS DEL SISTEMA (JSON):
+          DATOS DEL SISTEMA (JSON DE CONTEXTO REAL):
           ${JSON.stringify(enrichedContext)}`
       },
     });

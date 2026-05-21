@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Landing from './pages/Landing';
+import Cobertura from './pages/Cobertura';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/CRM/Products';
@@ -59,6 +60,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Landing />} />
+        <Route path="/cobertura" element={<Cobertura />} />
         <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/dashboard" />} />
         
         <Route path="/*" element={

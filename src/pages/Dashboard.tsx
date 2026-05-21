@@ -2,18 +2,14 @@ import {
   TrendingUp, 
   Users, 
   Target, 
-  ShoppingCart, 
   ArrowUpRight, 
   ArrowDownRight,
   Package,
-  Calendar,
-  Filter
+  Calendar
 } from "lucide-react";
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
+  XAxis,
+  YAxis,
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer,
@@ -22,6 +18,7 @@ import {
 } from "recharts";
 import { User } from "../types";
 import { motion } from "motion/react";
+import { Link } from "react-router-dom";
 
 const data = [
   { name: 'Ene', ventas: 4000, prospectos: 2400 },
@@ -43,18 +40,10 @@ export default function Dashboard({ user }: { user: User }) {
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
-      <div className="flex flex-col md:row items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-800">Panel de Control</h1>
           <p className="text-slate-500 mt-1">Bienvenido, {user.name}. Aquí está el resumen comercial de hoy.</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors">
-            <Calendar size={16} /> Últimos 30 días
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
-            <Filter size={16} /> Filtrar Reporte
-          </button>
         </div>
       </div>
 
@@ -163,7 +152,7 @@ export default function Dashboard({ user }: { user: User }) {
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="p-8 border-b border-slate-50 flex items-center justify-between">
           <h3 className="font-bold text-lg text-slate-800">Recientes Órdenes de Venta</h3>
-          <button className="text-sm font-bold text-blue-600 hover:underline">Ver todas las ventas</button>
+          <Link to="/crm/sales" className="text-sm font-bold text-blue-600 hover:underline">Ver todas las ventas</Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">

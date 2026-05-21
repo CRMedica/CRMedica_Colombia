@@ -32,6 +32,41 @@ interface LayoutProps {
 export default function Layout({ children, user, onLogout }: LayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isAiOverlayOpen, setIsAiOverlayOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    { 
+      id: "n1", 
+      title: "Venta Concretada ✅", 
+      message: "La orden ORD-7519 por Ana Parra ha sido entregada y pagada con éxito.", 
+      type: "success", 
+      read: false, 
+      time: "Hace 10 min" 
+    },
+    { 
+      id: "n2", 
+      title: "Mantenimiento Urgente 🛠️", 
+      message: "Se requiere calibración urgente del equipo EverFlo 5L en la Fundación Neumológica.", 
+      type: "info", 
+      read: false, 
+      time: "Hace 1 hora" 
+    },
+    { 
+      id: "n3", 
+      title: "Cotización Rechazada ❌", 
+      message: "La cotización enviada por Hospital Vida (ORD-7518) ha sido denegada.", 
+      type: "error", 
+      read: false, 
+      time: "Hace 1 día" 
+    },
+    { 
+      id: "n4", 
+      title: "Nuevo Prospecto Leads 👤", 
+      message: "Dr. Alejandro Gómez se ha registrado interesado en CPAP AirSense 11.", 
+      type: "success", 
+      read: true, 
+      time: "Hace 2 días" 
+    }
+  ]);
   const [messages, setMessages] = useState<{ role: 'bot' | 'user', text: string }[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isTyping, setIsTyping] = useState(false);
@@ -174,10 +209,86 @@ export default function Layout({ children, user, onLogout }: LayoutProps) {
               </span>
             </button>
             
-            <button className="p-2 text-slate-500 h-10 w-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors relative">
-              <Bell size={20} />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => {
+                  setIsNotificationsOpen(!isNotificationsOpen);
+                  setIsAiOverlayOpen(false);
+                }}
+                className="p-2 text-slate-500 h-10 w-10 flex items-center justify-center hover:bg-slate-100 rounded-full transition-colors relative"
+              >
+                <Bell size={20} />
+                {notifications.some(n => !n.read) && (
+                  <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {isNotificationsOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-40 cursor-default" 
+                      onClick={() => setIsNotificationsOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-slate-200/80 z-50 overflow-hidden"
+                    >
+                      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                        <span className="font-bold text-slate-800 text-sm">Notificaciones ({notifications.filter(n => !n.read).length})</span>
+                        {notifications.some(n => !n.read) && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setNotifications(notifications.map(n => ({ ...n, read: true })));
+                            }}
+                            className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                          >
+                            Marcar leídas
+                          </button>
+                        )}
+                      </div>
+                      <div className="max-h-[300px] overflow-y-auto divide-y divide-slate-100">
+                        {notifications.length === 0 ? (
+                          <div className="p-6 text-center text-slate-400 text-sm">No tienes notificaciones.</div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div 
+                              key={notif.id} 
+                              onClick={() => {
+                                setNotifications(notifications.map(n => n.id === notif.id ? { ...n, read: true } : n));
+                              }}
+                              className={`p-4 text-left transition-colors cursor-pointer hover:bg-slate-50 flex gap-3 ${notif.read ? "bg-white opacity-75" : "bg-blue-50/20"}`}
+                            >
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start gap-2">
+                                  <h4 className="font-bold text-xs text-slate-800">{notif.title}</h4>
+                                  <span className="text-[10px] text-slate-400 whitespace-nowrap">{notif.time}</span>
+                                </div>
+                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">{notif.message}</p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="p-2 bg-slate-50 border-t border-slate-100 text-center">
+                        <button 
+                          onClick={() => {
+                            setNotifications([]);
+                            setIsNotificationsOpen(false);
+                          }}
+                          className="text-[11px] font-semibold text-slate-500 hover:text-slate-800 py-1"
+                        >
+                          Limpiar historial
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
             <div className="h-8 w-px bg-slate-200 mx-2"></div>
             <div className="flex items-center gap-3 pl-2">
               <div className="text-right hidden sm:block">

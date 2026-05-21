@@ -56,12 +56,25 @@ export default function Products() {
   const fetchProducts = async () => {
     try {
       const data = await api.get("/products");
-      setProducts(data);
+      if (data && data.length > 0) {
+        setProducts(data);
+      } else {
+        throw new Error("No products found in data");
+      }
     } catch (err) {
       console.error(err);
       // Mock data updated with better placeholders
       setProducts([
-        { id: '1', sku: 'OX-500', name: 'Concentrador de Oxígeno 5L', category: 'Oxigenoterapia', brand: 'Drive', price: 4500000, stock: 12, description: 'Equipo estacionario de alta pureza.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Drive Medical', warranty: '1 año', tax_rate: 19 },
+        { id: '1', sku: 'OX-500', name: 'Concentrador de Oxígeno EverFlo 5L', category: 'Oxigenoterapia', brand: 'Philips Respironics', price: 4200000, stock: 12, description: 'Concentrador de oxígeno estacionario ultra confiable y compacto.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Philips', warranty: '1 año', tax_rate: 19 },
+        { id: '2', sku: 'OX-1000', name: 'Concentrador de Oxígeno Millennium M10 10L', category: 'Oxigenoterapia', brand: 'Philips Respironics', price: 7800000, stock: 4, description: 'Dispositivo estacionario diseñado para suministrar flujo continuo de oxígeno hasta 10 litros.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Philips', warranty: '1 año', tax_rate: 19 },
+        { id: '3', sku: 'OX-PORT', name: 'Concentrador de Oxígeno Portátil SimplyGo', category: 'Oxigenoterapia', brand: 'Philips', price: 9500000, stock: 3, description: 'El único concentrador de oxigeno portátil duradero que ofrece flujo continuo y pulso.', image_url: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?auto=format&fit=crop&q=80&w=400', provider: 'Philips', warranty: '2 años', tax_rate: 19 },
+        { id: '4', sku: 'CPAP-A11', name: 'CPAP AutoSet AirSense 11', category: 'Apnea', brand: 'ResMed', price: 3800000, stock: 18, description: 'Equipo automático de presión con conectividad IoT avanzada para terapia del sueño.', image_url: 'https://images.unsplash.com/photo-1628771065518-0d82f1113871?auto=format&fit=crop&q=80&w=400', provider: 'ResMed', warranty: '2 años', tax_rate: 19 },
+        { id: '5', sku: 'BPAP-CURV', name: 'BiPAP AirCurve 10 VAuto Tripack', category: 'Apnea', brand: 'ResMed', price: 6900000, stock: 7, description: 'Dispositivo binivel autoajustable con humidificador HumidAir integrado para pacientes respiratorios.', image_url: 'https://images.unsplash.com/photo-1628771065518-0d82f1113871?auto=format&fit=crop&q=80&w=400', provider: 'ResMed', warranty: '2 años', tax_rate: 19 },
+        { id: '6', sku: 'MASK-N30', name: 'Máscara Nasal AirFit N30', category: 'Insumos', brand: 'ResMed', price: 550000, stock: 32, description: 'Máscara nasal con soporte discreto y arnés ajustable debajo de la boca.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'ResMed', warranty: '3 meses', tax_rate: 19 },
+        { id: '7', sku: 'MASK-F20', name: 'Máscara Facio-Nasal AirFit F20', category: 'Insumos', brand: 'ResMed', price: 680000, stock: 22, description: 'Máscara oronasal de alto sellado, ideal para terapia con flujos y presiones elevadas.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'ResMed', warranty: '3 meses', tax_rate: 19 },
+        { id: '8', sku: 'NEB-PORT', name: 'Nebulizador Portátil de Malla NEB-M1', category: 'Nebulización', brand: 'Omron', price: 350000, stock: 15, description: 'Nebulizador ultra portátil y silencioso con tecnología de malla transductora activa.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Omron Colombia', warranty: '1 año', tax_rate: 19 },
+        { id: '9', sku: 'NEB-CLINIC', name: 'Nebulizador Hospitalario Compresor C28', category: 'Nebulización', brand: 'Omron', price: 420000, stock: 11, description: 'Compresor de alta durabilidad para dispensar broncodilatadores con gran tasa de nebulizado.', image_url: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=400', provider: 'Omron Colombia', warranty: '1 año', tax_rate: 19 },
+        { id: '10', sku: 'OXI-PULSE', name: 'Oxímetro de Pulso Digital Nonin Onyx', category: 'Insumos', brand: 'Nonin', price: 290000, stock: 45, description: 'Oxímetro de gran precisión militar y uso clínico continuo certificado por FDA.', image_url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&q=80&w=400', provider: 'Nonin USA', warranty: '1 año', tax_rate: 19 }
       ]);
     } finally {
       setLoading(false);

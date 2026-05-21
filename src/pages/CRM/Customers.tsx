@@ -118,6 +118,78 @@ export default function Customers() {
           city: "Barranquilla",
           department: "Atlántico",
           status: "inactive"
+        },
+        {
+          id: "c5",
+          name: "Hospital Universitario Hernando Moncaleano",
+          document_type: "NIT",
+          document_id: "891.180.017-5",
+          phone: "310 998 1234",
+          email: "compras@hospitalneiva.gov.co",
+          address: "Calle 9 # 15-25",
+          city: "Neiva",
+          department: "Huila",
+          status: "active"
+        },
+        {
+          id: "c6",
+          name: "IPS Alivio Pulmonar de los Andes",
+          document_type: "NIT",
+          document_id: "900.223.119-0",
+          phone: "315 440 2211",
+          email: "contacto@aliviopulmonar.co",
+          address: "Carrera 23 # 45-10",
+          city: "Manizales",
+          department: "Caldas",
+          status: "active"
+        },
+        {
+          id: "c7",
+          name: "Clínica Cardiorespiratoria del Caribe",
+          document_type: "NIT",
+          document_id: "806.012.333-4",
+          phone: "320 889 4433",
+          email: "info@cardiorespiratoriacaribe.com",
+          address: "Avenida Pedro de Heredia # 32-45",
+          city: "Cartagena",
+          department: "Bolívar",
+          status: "active"
+        },
+        {
+          id: "c8",
+          name: "Oxígenos de Occidente y Soporte SAS",
+          document_type: "NIT",
+          document_id: "901.332.887-2",
+          phone: "311 229 0101",
+          email: "admon@oxigenosoccidente.com",
+          address: "Calle 18 # 22-80",
+          city: "Pasto",
+          department: "Nariño",
+          status: "inactive"
+        },
+        {
+          id: "c9",
+          name: "Clínica de Somnología y Apnea del Llano",
+          document_type: "NIT",
+          document_id: "822.019.228-1",
+          phone: "317 550 4499",
+          email: "admisiones@suenollano.co",
+          address: "Carrera 40 # 33B-12",
+          city: "Villavicencio",
+          department: "Meta",
+          status: "active"
+        },
+        {
+          id: "c10",
+          name: "Hospital Universitario San Jorge",
+          document_type: "NIT",
+          document_id: "891.480.002-9",
+          phone: "300 443 1122",
+          email: "suministros@hospitalsanjorge.gov.co",
+          address: "Carrera 4 # 24-50",
+          city: "Pereira",
+          department: "Risaralda",
+          status: "active"
         }
       ]);
     } finally {

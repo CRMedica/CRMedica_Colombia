@@ -86,18 +86,77 @@ export default function Quotes() {
           status: "sent",
           notes: "CPAP oficial con máscara nasal AirFit N30",
           created_at: "2026-05-19T14:30:00Z"
+        },
+        {
+          id: "q3",
+          quote_number: 1026,
+          customer_id: "c3",
+          user_id: "u1",
+          total: 16750000,
+          tax: 2650000,
+          discount: 500000,
+          shipping: 80000,
+          status: "accepted",
+          notes: "Consola de oxigenoterapia con 3 Concentradores EverFlo 5L para expansión de ala neumológica.",
+          created_at: "2026-05-20T09:00:00Z"
+        },
+        {
+          id: "q4",
+          quote_number: 1027,
+          customer_id: "c5",
+          user_id: "u3",
+          total: 11450000,
+          tax: 1800000,
+          discount: 0,
+          shipping: 120000,
+          status: "draft",
+          notes: "Licitación Hospital Universitario Neiva - Concentrador Portátil SimplyGo y filtros.",
+          created_at: "2026-05-20T11:15:00Z"
+        },
+        {
+          id: "q5",
+          quote_number: 1028,
+          customer_id: "c4",
+          user_id: "u2",
+          total: 3950000,
+          tax: 620000,
+          discount: 100000,
+          shipping: 40000,
+          status: "rejected",
+          notes: "Cotización de CPAP Autocontrolado para el hogar de medicina del sueño de Villavicencio.",
+          created_at: "2026-05-21T08:30:00Z"
+        },
+        {
+          id: "q6",
+          quote_number: 1029,
+          customer_id: "c7",
+          user_id: "u1",
+          total: 15450000,
+          tax: 2450000,
+          discount: 400000,
+          shipping: 110000,
+          status: "sent",
+          notes: "Pack de 2 BiPAP AirCurve y 5 Máscaras AirFit F20 para Clinica Cardiorespiratoria del Caribe.",
+          created_at: "2026-05-21T10:00:00Z"
         }
       ];
 
       const resolvedProducts = productsData.length > 0 ? productsData : [
         { id: '1', sku: 'OX-500', name: 'Concentrador de Oxígeno EverFlo 5L', category: 'Oxigenoterapia', brand: 'Philips Respironics', price: 4200000, stock: 12, description: 'Concentrador estacionario de oxígeno médico.', image_url: '', provider: 'Philips', warranty: '1 año', tax_rate: 19 },
         { id: '2', sku: 'CPAP-A11', name: 'CPAP AutoSet AirSense 11', category: 'Sueño', brand: 'ResMed', price: 3800000, stock: 8, description: 'Equipo automático para terapia de Apnea de Sueño.', image_url: '', provider: 'ResMed', warranty: '2 años', tax_rate: 19 },
-        { id: '3', sku: 'MASK-N30', name: 'Máscara Nasal AirFit N30i', category: 'Consumibles', brand: 'ResMed', price: 550000, stock: 25, description: 'Máscara con arnés ultra liviana.', image_url: '', provider: 'ResMed', warranty: '3 meses', tax_rate: 19 }
+        { id: '3', sku: 'MASK-N30', name: 'Máscara Nasal AirFit N30i', category: 'Consumibles', brand: 'ResMed', price: 550000, stock: 25, description: 'Máscara con arnés ultra liviana.', image_url: '', provider: 'ResMed', warranty: '3 meses', tax_rate: 19 },
+        { id: '4', sku: 'OX-PORT', name: 'Concentrador Portátil SimplyGo', category: 'Oxigenoterapia', brand: 'Philips', price: 9500000, stock: 3, description: 'Concentrador de flujo continuo y pulso.', image_url: '', provider: 'Philips', warranty: '2 años', tax_rate: 19 },
+        { id: '5', sku: 'BPAP-CURV', name: 'BiPAP AirCurve 10 VAuto', category: 'Apnea', brand: 'ResMed', price: 6900000, stock: 7, description: 'Dispositivo binivel autoajustable con humidificador.', image_url: '', provider: 'ResMed', warranty: '2 años', tax_rate: 19 },
+        { id: '6', sku: 'OXI-PULSE', name: 'Oxímetro de Pulso Onyx', category: 'Insumos', brand: 'Nonin', price: 290000, stock: 45, description: 'Oxímetro de gran precisión digital.', image_url: '', provider: 'Nonin', warranty: '1 año', tax_rate: 19 }
       ];
 
       const resolvedCustomers = customersData.length > 0 ? customersData : [
         { id: "c1", name: "Fundación Neumológica de Colombia", document_type: "NIT", document_id: "860.034.908-2", phone: "+57 (601) 742-8900", email: "compras@neumologica.org", address: "Calle 163a # 13-60", city: "Bogotá", department: "Bogotá D.C.", status: "active" },
-        { id: "c2", name: "IPS Neumored SAS", document_type: "NIT", document_id: "901.442.115-4", phone: "320 890 1212", email: "gerencia@neumored.co", address: "Avenida 4N # 23N-50", city: "Cali", department: "Valle del Cauca", status: "active" }
+        { id: "c2", name: "IPS Neumored SAS", document_type: "NIT", document_id: "901.442.115-4", phone: "320 890 1212", email: "gerencia@neumored.co", address: "Avenida 4N # 23N-50", city: "Cali", department: "Valle del Cauca", status: "active" },
+        { id: "c3", name: "Clínica Respirar con Dignidad", document_type: "NIT", document_id: "800.224.510-1", phone: "318 456 2200", email: "servicio@respirardignidad.com", address: "Carrera 43A # 14-20", city: "Medellín", department: "Antioquia", status: "active" },
+        { id: "c4", name: "IPS Oxiseguridad de la Costa", document_type: "NIT", document_id: "900.512.980-3", phone: "301 556 7788", email: "mantenimiento@oxiseguridad.com", address: "Calle 72 # 53-12", city: "Barranquilla", department: "Atlántico", status: "inactive" },
+        { id: "c5", name: "Hospital Universitario Hernando Moncaleano", document_type: "NIT", document_id: "891.180.017-5", phone: "310 998 1234", email: "compras@hospitalneiva.gov.co", address: "Calle 9 # 15-25", city: "Neiva", department: "Huila", status: "active" },
+        { id: "c7", name: "Clínica Cardiorespiratoria del Caribe", document_type: "NIT", document_id: "806.012.333-4", phone: "320 889 4433", email: "info@cardiorespiratoriacaribe.com", address: "Avenida Pedro de Heredia # 32-45", city: "Cartagena", department: "Bolívar", status: "active" }
       ];
 
       setQuotes(resolvedQuotes);

@@ -72,8 +72,12 @@ export default function Sales() {
       ]);
 
       const resolvedCustomers = customersData.length > 0 ? customersData : [
-        { id: "c1", name: "Fundación Neumológica de Colombia", document_type: "NIT", document_id: "860.034.908-2", phone: "+57 (601) 742-8900", email: "", address: "", city: "Bogotá", department: "Bogotá D.C.", status: "active" },
-        { id: "c2", name: "IPS Neumored SAS", document_type: "NIT", document_id: "901.442.115-4", phone: "320 890 1212", email: "", address: "", city: "Cali", department: "Valle del Cauca", status: "active" }
+        { id: "c1", name: "Fundación Neumológica de Colombia", document_type: "NIT", document_id: "860.034.908-2", phone: "+57 (601) 742-8900", email: "compras@neumologica.org", address: "Calle 163a # 13-60", city: "Bogotá", department: "Bogotá D.C.", status: "active" },
+        { id: "c2", name: "IPS Neumored SAS", document_type: "NIT", document_id: "901.442.115-4", phone: "320 890 1212", email: "gerencia@neumored.co", address: "Avenida 4N # 23N-50", city: "Cali", department: "Valle del Cauca", status: "active" },
+        { id: "c3", name: "Clínica Respirar con Dignidad", document_type: "NIT", document_id: "800.224.510-1", phone: "318 456 2200", email: "servicio@respirardignidad.com", address: "Carrera 43A # 14-20", city: "Medellín", department: "Antioquia", status: "active" },
+        { id: "c4", name: "IPS Oxiseguridad de la Costa", document_type: "NIT", document_id: "900.512.980-3", phone: "301 556 7788", email: "mantenimiento@oxiseguridad.com", address: "Calle 72 # 53-12", city: "Barranquilla", department: "Atlántico", status: "inactive" },
+        { id: "c5", name: "Hospital Universitario Hernando Moncaleano", document_type: "NIT", document_id: "891.180.017-5", phone: "310 998 1234", email: "compras@hospitalneiva.gov.co", address: "Calle 9 # 15-25", city: "Neiva", department: "Huila", status: "active" },
+        { id: "c7", name: "Clínica Cardiorespiratoria del Caribe", document_type: "NIT", document_id: "806.012.333-4", phone: "320 889 4433", email: "info@cardiorespiratoriacaribe.com", address: "Avenida Pedro de Heredia # 32-45", city: "Cartagena", department: "Bolívar", status: "active" }
       ];
 
       const resolvedSales = salesData.length > 0 ? salesData : [
@@ -106,6 +110,46 @@ export default function Sales() {
           created_at: "2026-05-19T09:00:00Z",
           quote_id: "q3",
           user_id: "u1"
+        },
+        {
+          id: "s4",
+          customer_id: "c3",
+          total: 16750000,
+          status: "paid",
+          delivery_status: "delivered",
+          created_at: "2026-05-20T10:00:00Z",
+          quote_id: "q3",
+          user_id: "u1"
+        },
+        {
+          id: "s5",
+          customer_id: "c5",
+          total: 9500000,
+          status: "confirmed",
+          delivery_status: "not_shipped",
+          created_at: "2026-05-20T13:00:00Z",
+          quote_id: "q4",
+          user_id: "u3"
+        },
+        {
+          id: "s6",
+          customer_id: "c7",
+          total: 15450000,
+          status: "pending",
+          delivery_status: "shipped",
+          created_at: "2026-05-21T11:30:00Z",
+          quote_id: "q6",
+          user_id: "u1"
+        },
+        {
+          id: "s7",
+          customer_id: "c3",
+          total: 4200000,
+          status: "paid",
+          delivery_status: "delivered",
+          created_at: "2026-05-21T15:00:00Z",
+          quote_id: "q5",
+          user_id: "u2"
         }
       ];
 

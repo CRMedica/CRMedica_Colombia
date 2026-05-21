@@ -5,17 +5,13 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Products from './pages/CRM/Products';
+import Prospects from './pages/CRM/Prospects';
+import Customers from './pages/CRM/Customers';
+import Quotes from './pages/CRM/Quotes';
+import Sales from './pages/CRM/Sales';
+import Technical from './pages/CRM/Technical';
+import UsersAdmin from './pages/CRM/UsersAdmin';
 import { User } from './types';
-
-// CRM Pages placeholders
-const Placeholder = ({ name }: { name: string }) => (
-  <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100">
-    <h1 className="text-2xl font-bold text-slate-800 mb-4">{name}</h1>
-    <div className="h-64 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-200">
-      Módulo em desarrollo - Próximamente integración completa de datos.
-    </div>
-  </div>
-);
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -70,13 +66,13 @@ export default function App() {
             <Layout user={user} onLogout={handleLogout}>
               <Routes>
                 <Route path="dashboard" element={<Dashboard user={user} />} />
-                <Route path="crm/prospects" element={<Placeholder name="Gestión de Prospectos" />} />
-                <Route path="crm/customers" element={<Placeholder name="Directorio de Clientes" />} />
+                <Route path="crm/prospects" element={<Prospects />} />
+                <Route path="crm/customers" element={<Customers />} />
                 <Route path="crm/products" element={<Products />} />
-                <Route path="crm/quotes" element={<Placeholder name="Cotizaciones y Presupuestos" />} />
-                <Route path="crm/sales" element={<Placeholder name="Ventas y Pagos" />} />
-                <Route path="crm/technical" element={<Placeholder name="Órdenes de Servicio Técnico" />} />
-                <Route path="admin/users" element={<Placeholder name="Administración de Usuarios" />} />
+                <Route path="crm/quotes" element={<Quotes />} />
+                <Route path="crm/sales" element={<Sales />} />
+                <Route path="crm/technical" element={<Technical />} />
+                <Route path="admin/users" element={<UsersAdmin />} />
                 <Route path="*" element={<Navigate to="/dashboard" />} />
               </Routes>
             </Layout>
